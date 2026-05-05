@@ -351,7 +351,10 @@ export default function InvoiceGenerator() {
           </div>
 
           <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-4">
-            <FieldRow label="Date">
+            <FieldRow
+              label={state.labels.date}
+              onLabelChange={(v) => updateLabel("date", v)}
+            >
               <Input
                 type="date"
                 value={state.date}
@@ -359,7 +362,10 @@ export default function InvoiceGenerator() {
                 className="rounded-lg"
               />
             </FieldRow>
-            <FieldRow label="Payment Terms">
+            <FieldRow
+              label={state.labels.paymentTerms}
+              onLabelChange={(v) => updateLabel("paymentTerms", v)}
+            >
               <Input
                 value={state.paymentTerms}
                 onChange={(e) => update("paymentTerms", e.target.value)}
@@ -367,7 +373,10 @@ export default function InvoiceGenerator() {
                 className="rounded-lg"
               />
             </FieldRow>
-            <FieldRow label="Due Date">
+            <FieldRow
+              label={state.labels.dueDate}
+              onLabelChange={(v) => updateLabel("dueDate", v)}
+            >
               <Input
                 type="date"
                 value={state.dueDate}
@@ -375,7 +384,10 @@ export default function InvoiceGenerator() {
                 className="rounded-lg"
               />
             </FieldRow>
-            <FieldRow label="PO Number">
+            <FieldRow
+              label={state.labels.poNumber}
+              onLabelChange={(v) => updateLabel("poNumber", v)}
+            >
               <Input
                 value={state.poNumber}
                 onChange={(e) => update("poNumber", e.target.value)}
@@ -388,10 +400,34 @@ export default function InvoiceGenerator() {
           {/* Items Table */}
           <div className="mt-10 overflow-hidden rounded-xl border">
             <div className="grid grid-cols-12 gap-2 bg-primary px-4 py-3 text-xs font-semibold uppercase tracking-wide text-primary-foreground">
-              <div className="col-span-6">Item Description</div>
-              <div className="col-span-2 text-right">Qty</div>
-              <div className="col-span-2 text-right">Rate</div>
-              <div className="col-span-2 text-right">Amount</div>
+              <div className="col-span-6">
+                <EditableText
+                  value={state.labels.itemDescription}
+                  onChange={(v) => updateLabel("itemDescription", v)}
+                  className="text-primary-foreground"
+                />
+              </div>
+              <div className="col-span-2 text-right">
+                <EditableText
+                  value={state.labels.quantity}
+                  onChange={(v) => updateLabel("quantity", v)}
+                  className="text-primary-foreground"
+                />
+              </div>
+              <div className="col-span-2 text-right">
+                <EditableText
+                  value={state.labels.rate}
+                  onChange={(v) => updateLabel("rate", v)}
+                  className="text-primary-foreground"
+                />
+              </div>
+              <div className="col-span-2 text-right">
+                <EditableText
+                  value={state.labels.amount}
+                  onChange={(v) => updateLabel("amount", v)}
+                  className="text-primary-foreground"
+                />
+              </div>
             </div>
             <div className="divide-y">
               {state.items.map((item) => {
