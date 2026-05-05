@@ -244,14 +244,28 @@ export default function InvoiceGenerator() {
                   <img
                     src={state.logo}
                     alt="Logo"
-                    className="max-h-24 max-w-[220px] rounded-lg object-contain"
+                    crossOrigin="anonymous"
+                    className="block h-24 w-auto max-w-[260px] rounded-lg object-contain"
                   />
-                  <button
-                    onClick={() => update("logo", null)}
-                    className="absolute -top-2 -right-2 hidden rounded-full bg-destructive p-1 text-destructive-foreground group-hover:block print:hidden"
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </button>
+                  <div className="absolute -top-2 -right-2 hidden gap-1 group-hover:flex print:hidden">
+                    <label className="cursor-pointer rounded-full bg-primary p-1 text-primary-foreground shadow">
+                      <Upload className="h-3 w-3" />
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) =>
+                          e.target.files?.[0] && onLogo(e.target.files[0])
+                        }
+                      />
+                    </label>
+                    <button
+                      onClick={() => update("logo", null)}
+                      className="rounded-full bg-destructive p-1 text-destructive-foreground shadow"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <label className="flex h-24 w-48 cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-border bg-muted/40 text-sm text-muted-foreground transition hover:border-primary hover:bg-muted print:hidden">
@@ -267,9 +281,17 @@ export default function InvoiceGenerator() {
               )}
             </div>
             <div className="text-right">
-              <h2 className="text-4xl font-bold tracking-tight text-primary">INVOICE</h2>
+              <EditableText
+                value={state.labels.title}
+                onChange={(v) => updateLabel("title", v)}
+                className="text-4xl font-bold tracking-tight text-primary"
+              />
               <div className="mt-3 flex items-center justify-end gap-2">
-                <span className="text-sm font-medium text-muted-foreground">#</span>
+                <EditableText
+                  value={state.labels.numberPrefix}
+                  onChange={(v) => updateLabel("numberPrefix", v)}
+                  className="text-sm font-medium text-muted-foreground"
+                />
                 <Input
                   value={state.invoiceNumber}
                   onChange={(e) => update("invoiceNumber", e.target.value)}
