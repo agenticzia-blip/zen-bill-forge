@@ -503,9 +503,11 @@ export default function InvoiceGenerator() {
           <div className="mt-8 grid grid-cols-1 gap-8 md:grid-cols-2">
             <div className="space-y-4">
               <div>
-                <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  Notes
-                </Label>
+                <EditableText
+                  value={state.labels.notes}
+                  onChange={(v) => updateLabel("notes", v)}
+                  className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                />
                 <Textarea
                   value={state.notes}
                   onChange={(e) => update("notes", e.target.value)}
@@ -515,9 +517,11 @@ export default function InvoiceGenerator() {
                 />
               </div>
               <div>
-                <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  Terms
-                </Label>
+                <EditableText
+                  value={state.labels.terms}
+                  onChange={(v) => updateLabel("terms", v)}
+                  className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                />
                 <Textarea
                   value={state.terms}
                   onChange={(e) => update("terms", e.target.value)}
@@ -529,9 +533,14 @@ export default function InvoiceGenerator() {
             </div>
 
             <div className="space-y-2 rounded-xl bg-muted/40 p-5">
-              <TotalRow label="Subtotal" value={fmt(subtotal)} />
               <TotalRow
-                label="Tax (%)"
+                label={state.labels.subtotal}
+                onLabelChange={(v) => updateLabel("subtotal", v)}
+                value={fmt(subtotal)}
+              />
+              <TotalRow
+                label={state.labels.tax}
+                onLabelChange={(v) => updateLabel("tax", v)}
                 value={
                   <Input
                     type="number"
@@ -542,7 +551,8 @@ export default function InvoiceGenerator() {
                 }
               />
               <TotalRow
-                label="Discount"
+                label={state.labels.discount}
+                onLabelChange={(v) => updateLabel("discount", v)}
                 value={
                   <Input
                     type="number"
@@ -553,7 +563,8 @@ export default function InvoiceGenerator() {
                 }
               />
               <TotalRow
-                label="Shipping"
+                label={state.labels.shipping}
+                onLabelChange={(v) => updateLabel("shipping", v)}
                 value={
                   <Input
                     type="number"
@@ -564,9 +575,15 @@ export default function InvoiceGenerator() {
                 }
               />
               <div className="my-2 h-px bg-border" />
-              <TotalRow label="Total" value={fmt(total)} bold />
               <TotalRow
-                label="Amount Paid"
+                label={state.labels.total}
+                onLabelChange={(v) => updateLabel("total", v)}
+                value={fmt(total)}
+                bold
+              />
+              <TotalRow
+                label={state.labels.amountPaid}
+                onLabelChange={(v) => updateLabel("amountPaid", v)}
                 value={
                   <Input
                     type="number"
@@ -577,9 +594,11 @@ export default function InvoiceGenerator() {
                 }
               />
               <div className="mt-3 flex items-center justify-between rounded-lg bg-primary px-4 py-3 text-primary-foreground">
-                <span className="text-sm font-semibold uppercase tracking-wide">
-                  Balance Due
-                </span>
+                <EditableText
+                  value={state.labels.balanceDue}
+                  onChange={(v) => updateLabel("balanceDue", v)}
+                  className="text-sm font-semibold uppercase tracking-wide text-primary-foreground"
+                />
                 <span className="text-lg font-bold tabular-nums">{fmt(balanceDue)}</span>
               </div>
             </div>
