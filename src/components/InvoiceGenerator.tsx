@@ -49,9 +49,35 @@ type InvoiceState = {
   notes: string;
   terms: string;
   currency: string;
+  labels: Record<string, string>;
 };
 
-const STORAGE_KEY = "invoice-generator-data-v1";
+const STORAGE_KEY = "invoice-generator-data-v2";
+
+const DEFAULT_LABELS: Record<string, string> = {
+  title: "INVOICE",
+  numberPrefix: "#",
+  from: "From",
+  billTo: "Bill To",
+  shipTo: "Ship To",
+  date: "Date",
+  paymentTerms: "Payment Terms",
+  dueDate: "Due Date",
+  poNumber: "PO Number",
+  itemDescription: "Item Description",
+  quantity: "Qty",
+  rate: "Rate",
+  amount: "Amount",
+  notes: "Notes",
+  terms: "Terms",
+  subtotal: "Subtotal",
+  tax: "Tax (%)",
+  discount: "Discount",
+  shipping: "Shipping",
+  total: "Total",
+  amountPaid: "Amount Paid",
+  balanceDue: "Balance Due",
+};
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -80,6 +106,7 @@ const defaultState = (): InvoiceState => ({
   notes: "",
   terms: "",
   currency: "USD",
+  labels: { ...DEFAULT_LABELS },
 });
 
 export default function InvoiceGenerator() {
@@ -114,6 +141,9 @@ export default function InvoiceGenerator() {
   const total =
     subtotal + taxAmount - (Number(state.discount) || 0) + (Number(state.shipping) || 0);
   const balanceDue = total - (Number(state.amountPaid) || 0);
+
+  const updateLabel = (k: string, v: string) =>
+    setState((s) => ({ ...s, labels: { ...s.labels, [k]: v } }));
 
   const update = <K extends keyof InvoiceState>(k: K, v: InvoiceState[K]) =>
     setState((s) => ({ ...s, [k]: v }));
@@ -217,14 +247,28 @@ export default function InvoiceGenerator() {
                   <img
                     src={state.logo}
                     alt="Logo"
-                    className="max-h-24 max-w-[220px] rounded-lg object-contain"
+                    crossOrigin="anonymous"
+                    className="block h-24 w-auto max-w-[260px] rounded-lg object-contain"
                   />
-                  <button
-                    onClick={() => update("logo", null)}
-                    className="absolute -top-2 -right-2 hidden rounded-full bg-destructive p-1 text-destructive-foreground group-hover:block print:hidden"
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </button>
+                  <div className="absolute -top-2 -right-2 hidden gap-1 group-hover:flex print:hidden">
+                    <label className="cursor-pointer rounded-full bg-primary p-1 text-primary-foreground shadow">
+                      <Upload className="h-3 w-3" />
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) =>
+                          e.target.files?.[0] && onLogo(e.target.files[0])
+                        }
+                      />
+                    </label>
+                    <button
+                      onClick={() => update("logo", null)}
+                      className="rounded-full bg-destructive p-1 text-destructive-foreground shadow"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <label className="flex h-24 w-48 cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-border bg-muted/40 text-sm text-muted-foreground transition hover:border-primary hover:bg-muted print:hidden">
@@ -240,9 +284,17 @@ export default function InvoiceGenerator() {
               )}
             </div>
             <div className="text-right">
-              <h2 className="text-4xl font-bold tracking-tight text-primary">INVOICE</h2>
+              <EditableText
+                value={state.labels.title}
+                onChange={(v) => updateLabel("title", v)}
+                className="text-4xl font-bold tracking-tight text-primary"
+              />
               <div className="mt-3 flex items-center justify-end gap-2">
-                <span className="text-sm font-medium text-muted-foreground">#</span>
+                <EditableText
+                  value={state.labels.numberPrefix}
+                  onChange={(v) => updateLabel("numberPrefix", v)}
+                  className="text-sm font-medium text-muted-foreground"
+                />
                 <Input
                   value={state.invoiceNumber}
                   onChange={(e) => update("invoiceNumber", e.target.value)}
@@ -255,9 +307,11 @@ export default function InvoiceGenerator() {
           {/* Parties + Dates */}
           <div className="mt-10 grid grid-cols-1 gap-6 md:grid-cols-3">
             <div>
-              <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                From
-              </Label>
+              <EditableText
+                value={state.labels.from}
+                onChange={(v) => updateLabel("from", v)}
+                className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+              />
               <Textarea
                 value={state.from}
                 onChange={(e) => update("from", e.target.value)}
@@ -267,9 +321,11 @@ export default function InvoiceGenerator() {
               />
             </div>
             <div>
-              <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Bill To
-              </Label>
+              <EditableText
+                value={state.labels.billTo}
+                onChange={(v) => updateLabel("billTo", v)}
+                className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+              />
               <Textarea
                 value={state.billTo}
                 onChange={(e) => update("billTo", e.target.value)}
@@ -279,9 +335,11 @@ export default function InvoiceGenerator() {
               />
             </div>
             <div>
-              <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Ship To <span className="font-normal lowercase">(optional)</span>
-              </Label>
+              <EditableText
+                value={state.labels.shipTo}
+                onChange={(v) => updateLabel("shipTo", v)}
+                className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+              />
               <Textarea
                 value={state.shipTo}
                 onChange={(e) => update("shipTo", e.target.value)}
@@ -293,7 +351,10 @@ export default function InvoiceGenerator() {
           </div>
 
           <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-4">
-            <FieldRow label="Date">
+            <FieldRow
+              label={state.labels.date}
+              onLabelChange={(v) => updateLabel("date", v)}
+            >
               <Input
                 type="date"
                 value={state.date}
@@ -301,7 +362,10 @@ export default function InvoiceGenerator() {
                 className="rounded-lg"
               />
             </FieldRow>
-            <FieldRow label="Payment Terms">
+            <FieldRow
+              label={state.labels.paymentTerms}
+              onLabelChange={(v) => updateLabel("paymentTerms", v)}
+            >
               <Input
                 value={state.paymentTerms}
                 onChange={(e) => update("paymentTerms", e.target.value)}
@@ -309,7 +373,10 @@ export default function InvoiceGenerator() {
                 className="rounded-lg"
               />
             </FieldRow>
-            <FieldRow label="Due Date">
+            <FieldRow
+              label={state.labels.dueDate}
+              onLabelChange={(v) => updateLabel("dueDate", v)}
+            >
               <Input
                 type="date"
                 value={state.dueDate}
@@ -317,7 +384,10 @@ export default function InvoiceGenerator() {
                 className="rounded-lg"
               />
             </FieldRow>
-            <FieldRow label="PO Number">
+            <FieldRow
+              label={state.labels.poNumber}
+              onLabelChange={(v) => updateLabel("poNumber", v)}
+            >
               <Input
                 value={state.poNumber}
                 onChange={(e) => update("poNumber", e.target.value)}
@@ -330,10 +400,34 @@ export default function InvoiceGenerator() {
           {/* Items Table */}
           <div className="mt-10 overflow-hidden rounded-xl border">
             <div className="grid grid-cols-12 gap-2 bg-primary px-4 py-3 text-xs font-semibold uppercase tracking-wide text-primary-foreground">
-              <div className="col-span-6">Item Description</div>
-              <div className="col-span-2 text-right">Qty</div>
-              <div className="col-span-2 text-right">Rate</div>
-              <div className="col-span-2 text-right">Amount</div>
+              <div className="col-span-6">
+                <EditableText
+                  value={state.labels.itemDescription}
+                  onChange={(v) => updateLabel("itemDescription", v)}
+                  className="text-primary-foreground"
+                />
+              </div>
+              <div className="col-span-2 text-right">
+                <EditableText
+                  value={state.labels.quantity}
+                  onChange={(v) => updateLabel("quantity", v)}
+                  className="text-primary-foreground"
+                />
+              </div>
+              <div className="col-span-2 text-right">
+                <EditableText
+                  value={state.labels.rate}
+                  onChange={(v) => updateLabel("rate", v)}
+                  className="text-primary-foreground"
+                />
+              </div>
+              <div className="col-span-2 text-right">
+                <EditableText
+                  value={state.labels.amount}
+                  onChange={(v) => updateLabel("amount", v)}
+                  className="text-primary-foreground"
+                />
+              </div>
             </div>
             <div className="divide-y">
               {state.items.map((item) => {
@@ -409,9 +503,11 @@ export default function InvoiceGenerator() {
           <div className="mt-8 grid grid-cols-1 gap-8 md:grid-cols-2">
             <div className="space-y-4">
               <div>
-                <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  Notes
-                </Label>
+                <EditableText
+                  value={state.labels.notes}
+                  onChange={(v) => updateLabel("notes", v)}
+                  className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                />
                 <Textarea
                   value={state.notes}
                   onChange={(e) => update("notes", e.target.value)}
@@ -421,9 +517,11 @@ export default function InvoiceGenerator() {
                 />
               </div>
               <div>
-                <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  Terms
-                </Label>
+                <EditableText
+                  value={state.labels.terms}
+                  onChange={(v) => updateLabel("terms", v)}
+                  className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                />
                 <Textarea
                   value={state.terms}
                   onChange={(e) => update("terms", e.target.value)}
@@ -435,9 +533,14 @@ export default function InvoiceGenerator() {
             </div>
 
             <div className="space-y-2 rounded-xl bg-muted/40 p-5">
-              <TotalRow label="Subtotal" value={fmt(subtotal)} />
               <TotalRow
-                label="Tax (%)"
+                label={state.labels.subtotal}
+                onLabelChange={(v) => updateLabel("subtotal", v)}
+                value={fmt(subtotal)}
+              />
+              <TotalRow
+                label={state.labels.tax}
+                onLabelChange={(v) => updateLabel("tax", v)}
                 value={
                   <Input
                     type="number"
@@ -448,7 +551,8 @@ export default function InvoiceGenerator() {
                 }
               />
               <TotalRow
-                label="Discount"
+                label={state.labels.discount}
+                onLabelChange={(v) => updateLabel("discount", v)}
                 value={
                   <Input
                     type="number"
@@ -459,7 +563,8 @@ export default function InvoiceGenerator() {
                 }
               />
               <TotalRow
-                label="Shipping"
+                label={state.labels.shipping}
+                onLabelChange={(v) => updateLabel("shipping", v)}
                 value={
                   <Input
                     type="number"
@@ -470,9 +575,15 @@ export default function InvoiceGenerator() {
                 }
               />
               <div className="my-2 h-px bg-border" />
-              <TotalRow label="Total" value={fmt(total)} bold />
               <TotalRow
-                label="Amount Paid"
+                label={state.labels.total}
+                onLabelChange={(v) => updateLabel("total", v)}
+                value={fmt(total)}
+                bold
+              />
+              <TotalRow
+                label={state.labels.amountPaid}
+                onLabelChange={(v) => updateLabel("amountPaid", v)}
                 value={
                   <Input
                     type="number"
@@ -483,9 +594,11 @@ export default function InvoiceGenerator() {
                 }
               />
               <div className="mt-3 flex items-center justify-between rounded-lg bg-primary px-4 py-3 text-primary-foreground">
-                <span className="text-sm font-semibold uppercase tracking-wide">
-                  Balance Due
-                </span>
+                <EditableText
+                  value={state.labels.balanceDue}
+                  onChange={(v) => updateLabel("balanceDue", v)}
+                  className="text-sm font-semibold uppercase tracking-wide text-primary-foreground"
+                />
                 <span className="text-lg font-bold tabular-nums">{fmt(balanceDue)}</span>
               </div>
             </div>
@@ -496,12 +609,28 @@ export default function InvoiceGenerator() {
   );
 }
 
-function FieldRow({ label, children }: { label: string; children: React.ReactNode }) {
+function FieldRow({
+  label,
+  onLabelChange,
+  children,
+}: {
+  label: string;
+  onLabelChange?: (v: string) => void;
+  children: React.ReactNode;
+}) {
   return (
     <div>
-      <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-        {label}
-      </Label>
+      {onLabelChange ? (
+        <EditableText
+          value={label}
+          onChange={onLabelChange}
+          className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+        />
+      ) : (
+        <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          {label}
+        </Label>
+      )}
       <div className="mt-2">{children}</div>
     </div>
   );
@@ -509,20 +638,31 @@ function FieldRow({ label, children }: { label: string; children: React.ReactNod
 
 function TotalRow({
   label,
+  onLabelChange,
   value,
   bold,
 }: {
   label: string;
+  onLabelChange?: (v: string) => void;
   value: React.ReactNode;
   bold?: boolean;
 }) {
+  const labelEl = onLabelChange ? (
+    <EditableText
+      value={label}
+      onChange={onLabelChange}
+      className={`text-sm ${bold ? "font-bold text-foreground" : "text-muted-foreground"}`}
+    />
+  ) : (
+    <span
+      className={`text-sm ${bold ? "font-bold text-foreground" : "text-muted-foreground"}`}
+    >
+      {label}
+    </span>
+  );
   return (
     <div className="flex items-center justify-between gap-4">
-      <span
-        className={`text-sm ${bold ? "font-bold text-foreground" : "text-muted-foreground"}`}
-      >
-        {label}
-      </span>
+      {labelEl}
       {typeof value === "string" ? (
         <span className={`tabular-nums ${bold ? "text-lg font-bold" : "text-sm"}`}>
           {value}
@@ -531,5 +671,26 @@ function TotalRow({
         value
       )}
     </div>
+  );
+}
+
+function EditableText({
+  value,
+  onChange,
+  className = "",
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  className?: string;
+}) {
+  return (
+    <span
+      contentEditable
+      suppressContentEditableWarning
+      onBlur={(e) => onChange(e.currentTarget.textContent ?? "")}
+      className={`inline-block min-w-[1ch] cursor-text rounded px-0.5 outline-none transition hover:bg-accent/10 focus:bg-accent/15 focus:ring-1 focus:ring-ring print:hover:bg-transparent print:focus:bg-transparent print:focus:ring-0 ${className}`}
+    >
+      {value}
+    </span>
   );
 }
