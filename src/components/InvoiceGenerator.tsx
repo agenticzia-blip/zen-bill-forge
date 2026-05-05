@@ -548,12 +548,28 @@ export default function InvoiceGenerator() {
   );
 }
 
-function FieldRow({ label, children }: { label: string; children: React.ReactNode }) {
+function FieldRow({
+  label,
+  onLabelChange,
+  children,
+}: {
+  label: string;
+  onLabelChange?: (v: string) => void;
+  children: React.ReactNode;
+}) {
   return (
     <div>
-      <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-        {label}
-      </Label>
+      {onLabelChange ? (
+        <EditableText
+          value={label}
+          onChange={onLabelChange}
+          className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+        />
+      ) : (
+        <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          {label}
+        </Label>
+      )}
       <div className="mt-2">{children}</div>
     </div>
   );
@@ -561,20 +577,31 @@ function FieldRow({ label, children }: { label: string; children: React.ReactNod
 
 function TotalRow({
   label,
+  onLabelChange,
   value,
   bold,
 }: {
   label: string;
+  onLabelChange?: (v: string) => void;
   value: React.ReactNode;
   bold?: boolean;
 }) {
+  const labelEl = onLabelChange ? (
+    <EditableText
+      value={label}
+      onChange={onLabelChange}
+      className={`text-sm ${bold ? "font-bold text-foreground" : "text-muted-foreground"}`}
+    />
+  ) : (
+    <span
+      className={`text-sm ${bold ? "font-bold text-foreground" : "text-muted-foreground"}`}
+    >
+      {label}
+    </span>
+  );
   return (
     <div className="flex items-center justify-between gap-4">
-      <span
-        className={`text-sm ${bold ? "font-bold text-foreground" : "text-muted-foreground"}`}
-      >
-        {label}
-      </span>
+      {labelEl}
       {typeof value === "string" ? (
         <span className={`tabular-nums ${bold ? "text-lg font-bold" : "text-sm"}`}>
           {value}
@@ -583,5 +610,26 @@ function TotalRow({
         value
       )}
     </div>
+  );
+}
+
+function EditableText({
+  value,
+  onChange,
+  className = "",
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  className?: string;
+}) {
+  return (
+    <span
+      contentEditable
+      suppressContentEditableWarning
+      onBlur={(e) => onChange(e.currentTarget.textContent ?? "")}
+      className={`inline-block min-w-[1ch] cursor-text rounded px-0.5 outline-none transition hover:bg-accent/10 focus:bg-accent/15 focus:ring-1 focus:ring-ring print:hover:bg-transparent print:focus:bg-transparent print:focus:ring-0 ${className}`}
+    >
+      {value}
+    </span>
   );
 }
