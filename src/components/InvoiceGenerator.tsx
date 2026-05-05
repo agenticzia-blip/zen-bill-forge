@@ -174,7 +174,34 @@ export default function InvoiceGenerator() {
 
   const onLogo = (file: File) => {
     const reader = new FileReader();
-    reader.onload = () => update("logo", reader.result as string);
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      // Downscale to keep storage small and rendering crisp
+      const img = new Image();
+      img.onload = () => {
+        const maxW = 480;
+        const maxH = 240;
+        const scale = Math.min(1, maxW / img.width, maxH / img.height);
+        const w = Math.round(img.width * scale);
+        const h = Math.round(img.height * scale);
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          update("logo", dataUrl);
+          return;
+        }
+        ctx.drawImage(img, 0, 0, w, h);
+        const out =
+          file.type === "image/png"
+            ? canvas.toDataURL("image/png")
+            : canvas.toDataURL("image/jpeg", 0.9);
+        update("logo", out);
+      };
+      img.onerror = () => update("logo", dataUrl);
+      img.src = dataUrl;
+    };
     reader.readAsDataURL(file);
   };
 
