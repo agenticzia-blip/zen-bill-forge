@@ -142,6 +142,9 @@ export default function InvoiceGenerator() {
     subtotal + taxAmount - (Number(state.discount) || 0) + (Number(state.shipping) || 0);
   const balanceDue = total - (Number(state.amountPaid) || 0);
 
+  const updateLabel = (k: string, v: string) =>
+    setState((s) => ({ ...s, labels: { ...s.labels, [k]: v } }));
+
   const update = <K extends keyof InvoiceState>(k: K, v: InvoiceState[K]) =>
     setState((s) => ({ ...s, [k]: v }));
 
