@@ -49,9 +49,35 @@ type InvoiceState = {
   notes: string;
   terms: string;
   currency: string;
+  labels: Record<string, string>;
 };
 
-const STORAGE_KEY = "invoice-generator-data-v1";
+const STORAGE_KEY = "invoice-generator-data-v2";
+
+const DEFAULT_LABELS: Record<string, string> = {
+  title: "INVOICE",
+  numberPrefix: "#",
+  from: "From",
+  billTo: "Bill To",
+  shipTo: "Ship To",
+  date: "Date",
+  paymentTerms: "Payment Terms",
+  dueDate: "Due Date",
+  poNumber: "PO Number",
+  itemDescription: "Item Description",
+  quantity: "Qty",
+  rate: "Rate",
+  amount: "Amount",
+  notes: "Notes",
+  terms: "Terms",
+  subtotal: "Subtotal",
+  tax: "Tax (%)",
+  discount: "Discount",
+  shipping: "Shipping",
+  total: "Total",
+  amountPaid: "Amount Paid",
+  balanceDue: "Balance Due",
+};
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -80,6 +106,7 @@ const defaultState = (): InvoiceState => ({
   notes: "",
   terms: "",
   currency: "USD",
+  labels: { ...DEFAULT_LABELS },
 });
 
 export default function InvoiceGenerator() {
