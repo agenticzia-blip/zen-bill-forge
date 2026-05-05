@@ -307,9 +307,11 @@ export default function InvoiceGenerator() {
           {/* Parties + Dates */}
           <div className="mt-10 grid grid-cols-1 gap-6 md:grid-cols-3">
             <div>
-              <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                From
-              </Label>
+              <EditableText
+                value={state.labels.from}
+                onChange={(v) => updateLabel("from", v)}
+                className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+              />
               <Textarea
                 value={state.from}
                 onChange={(e) => update("from", e.target.value)}
@@ -319,9 +321,11 @@ export default function InvoiceGenerator() {
               />
             </div>
             <div>
-              <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Bill To
-              </Label>
+              <EditableText
+                value={state.labels.billTo}
+                onChange={(v) => updateLabel("billTo", v)}
+                className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+              />
               <Textarea
                 value={state.billTo}
                 onChange={(e) => update("billTo", e.target.value)}
@@ -331,9 +335,11 @@ export default function InvoiceGenerator() {
               />
             </div>
             <div>
-              <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Ship To <span className="font-normal lowercase">(optional)</span>
-              </Label>
+              <EditableText
+                value={state.labels.shipTo}
+                onChange={(v) => updateLabel("shipTo", v)}
+                className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+              />
               <Textarea
                 value={state.shipTo}
                 onChange={(e) => update("shipTo", e.target.value)}
