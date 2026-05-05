@@ -123,7 +123,18 @@ export default function InvoiceGenerator() {
   }, []);
 
   useEffect(() => {
-    if (hydrated) localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    if (!hydrated) return;
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    } catch {
+      // Likely quota exceeded (large logo data URL). Persist without the logo.
+      try {
+        localStorage.setItem(
+          STORAGE_KEY,
+          JSON.stringify({ ...state, logo: null }),
+        );
+      } catch {}
+    }
   }, [state, hydrated]);
 
   const currency = CURRENCIES.find((c) => c.code === state.currency) ?? CURRENCIES[0];
