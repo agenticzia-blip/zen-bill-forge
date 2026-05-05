@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import jsPDF from "jspdf";
-import html2canvas from "html2canvas";
+import { toPng } from "html-to-image";
 import { toast } from "sonner";
 
 type LineItem = {
