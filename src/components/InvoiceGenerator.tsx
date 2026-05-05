@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import jsPDF from "jspdf";
-import html2canvas from "html2canvas";
+import { toPng } from "html-to-image";
 import { toast } from "sonner";
 
 type LineItem = {
@@ -209,22 +209,29 @@ export default function InvoiceGenerator() {
     if (!invoiceRef.current) return;
     toast.loading("Generating PDF...", { id: "pdf" });
     try {
-      const canvas = await html2canvas(invoiceRef.current, {
-        scale: 2,
+      const node = invoiceRef.current;
+      const dataUrl = await toPng(node, {
+        pixelRatio: 2,
         backgroundColor: "#ffffff",
-        useCORS: true,
+        cacheBust: true,
       });
-      const imgData = canvas.toDataURL("image/png");
+      const img = new Image();
+      img.src = dataUrl;
+      await new Promise<void>((res, rej) => {
+        img.onload = () => res();
+        img.onerror = () => rej(new Error("image load failed"));
+      });
       const pdf = new jsPDF({ unit: "pt", format: "a4" });
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
-      const ratio = Math.min(pageWidth / canvas.width, pageHeight / canvas.height);
-      const w = canvas.width * ratio;
-      const h = canvas.height * ratio;
-      pdf.addImage(imgData, "PNG", (pageWidth - w) / 2, 20, w, h);
+      const ratio = Math.min(pageWidth / img.width, pageHeight / img.height);
+      const w = img.width * ratio;
+      const h = img.height * ratio;
+      pdf.addImage(dataUrl, "PNG", (pageWidth - w) / 2, 20, w, h);
       pdf.save(`${state.invoiceNumber || "invoice"}.pdf`);
       toast.success("PDF downloaded", { id: "pdf" });
     } catch (e) {
+      console.error("PDF error:", e);
       toast.error("Failed to generate PDF", { id: "pdf" });
     }
   };
