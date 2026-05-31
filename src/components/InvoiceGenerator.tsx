@@ -386,6 +386,33 @@ export default function InvoiceGenerator() {
                   />
                 </label>
               )}
+              {state.logo && state.logoPalette.length > 0 && (
+                <div className="mt-3 flex items-center gap-2 print:hidden">
+                  <span className="text-xs text-muted-foreground">Theme:</span>
+                  {state.logoPalette.map((c) => (
+                    <button
+                      key={c}
+                      onClick={() => update("themeColor", c)}
+                      title={`Use ${c}`}
+                      aria-label={`Use color ${c}`}
+                      className={`h-6 w-6 rounded-full border-2 transition ${
+                        state.themeColor === c
+                          ? "border-foreground scale-110"
+                          : "border-white shadow"
+                      }`}
+                      style={{ backgroundColor: c }}
+                    />
+                  ))}
+                  {state.themeColor && (
+                    <button
+                      onClick={() => update("themeColor", null)}
+                      className="text-xs text-muted-foreground underline hover:text-foreground"
+                    >
+                      Reset
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
             <div className="text-right">
               <EditableText
