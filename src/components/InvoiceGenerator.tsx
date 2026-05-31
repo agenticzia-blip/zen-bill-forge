@@ -79,6 +79,8 @@ const DEFAULT_LABELS: Record<string, string> = {
   total: "Total",
   amountPaid: "Amount Paid",
   balanceDue: "Balance Due",
+  scheduledPayment: "Scheduled Payment",
+  scheduledDate: "Scheduled Date",
 };
 
 const today = () => new Date().toISOString().slice(0, 10);
