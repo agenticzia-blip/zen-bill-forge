@@ -58,9 +58,11 @@ type InvoiceState = {
   terms: string;
   currency: string;
   labels: Record<string, string>;
+  themeColor: string | null;
+  logoPalette: string[];
 };
 
-const STORAGE_KEY = "invoice-generator-data-v2";
+const STORAGE_KEY = CURRENT_KEY;
 
 const DEFAULT_LABELS: Record<string, string> = {
   title: "INVOICE",
