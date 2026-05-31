@@ -18,8 +18,8 @@ import { toast } from "sonner";
 type LineItem = {
   id: string;
   description: string;
-  quantity: number;
-  rate: number;
+  quantity: string;
+  rate: string;
 };
 
 type Currency = { code: string; symbol: string; label: string };
