@@ -210,8 +210,9 @@ export default function InvoiceGenerator() {
     toast.loading("Generating PDF...", { id: "pdf" });
     try {
       const node = invoiceRef.current;
-      const dataUrl = await toPng(node, {
-        pixelRatio: 2,
+      const dataUrl = await toJpeg(node, {
+        pixelRatio: 1.5,
+        quality: 0.82,
         backgroundColor: "#ffffff",
         cacheBust: true,
       });
@@ -221,13 +222,13 @@ export default function InvoiceGenerator() {
         img.onload = () => res();
         img.onerror = () => rej(new Error("image load failed"));
       });
-      const pdf = new jsPDF({ unit: "pt", format: "a4" });
+      const pdf = new jsPDF({ unit: "pt", format: "a4", compress: true });
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
       const ratio = Math.min(pageWidth / img.width, pageHeight / img.height);
       const w = img.width * ratio;
       const h = img.height * ratio;
-      pdf.addImage(dataUrl, "PNG", (pageWidth - w) / 2, 20, w, h);
+      pdf.addImage(dataUrl, "JPEG", (pageWidth - w) / 2, 20, w, h, undefined, "FAST");
       pdf.save(`${state.invoiceNumber || "invoice"}.pdf`);
       toast.success("PDF downloaded", { id: "pdf" });
     } catch (e) {
