@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { Plus, Trash2, Download, Printer, Upload, Save } from "lucide-react";
+import { Plus, Trash2, Download, Printer, Upload, Save, FolderOpen } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -14,6 +15,11 @@ import {
 import jsPDF from "jspdf";
 import { toJpeg } from "html-to-image";
 import { toast } from "sonner";
+import {
+  CURRENT_KEY,
+  LOAD_PENDING_KEY,
+  saveInvoiceSnapshot,
+} from "@/lib/invoice-storage";
 
 type LineItem = {
   id: string;
@@ -52,9 +58,11 @@ type InvoiceState = {
   terms: string;
   currency: string;
   labels: Record<string, string>;
+  themeColor: string | null;
+  logoPalette: string[];
 };
 
-const STORAGE_KEY = "invoice-generator-data-v2";
+const STORAGE_KEY = CURRENT_KEY;
 
 const DEFAULT_LABELS: Record<string, string> = {
   title: "INVOICE",
@@ -113,6 +121,8 @@ const defaultState = (): InvoiceState => ({
   terms: "",
   currency: "USD",
   labels: { ...DEFAULT_LABELS },
+  themeColor: null,
+  logoPalette: [],
 });
 
 export default function InvoiceGenerator() {
@@ -124,9 +134,31 @@ export default function InvoiceGenerator() {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) setState({ ...defaultState(), ...JSON.parse(saved) });
+      // clear "load pending" flag if set from /saved navigation
+      localStorage.removeItem(LOAD_PENDING_KEY);
     } catch {}
     setHydrated(true);
   }, []);
+
+  // Apply theme color to CSS variables (not background)
+  useEffect(() => {
+    const root = document.documentElement;
+    if (state.themeColor) {
+      root.style.setProperty("--primary", state.themeColor);
+      root.style.setProperty("--accent", state.themeColor);
+      const fg = readableForeground(state.themeColor);
+      root.style.setProperty("--primary-foreground", fg);
+      root.style.setProperty("--accent-foreground", fg);
+    } else {
+      root.style.removeProperty("--primary");
+      root.style.removeProperty("--accent");
+      root.style.removeProperty("--primary-foreground");
+      root.style.removeProperty("--accent-foreground");
+    }
+    return () => {
+      // don't clear on unmount — keep theme while editing
+    };
+  }, [state.themeColor]);
 
   useEffect(() => {
     if (!hydrated) return;
@@ -204,7 +236,8 @@ export default function InvoiceGenerator() {
           file.type === "image/png"
             ? canvas.toDataURL("image/png")
             : canvas.toDataURL("image/jpeg", 0.9);
-        update("logo", out);
+        const palette = extractPalette(ctx, w, h);
+        setState((s) => ({ ...s, logo: out, logoPalette: palette }));
       };
       img.onerror = () => update("logo", dataUrl);
       img.src = dataUrl;
@@ -237,7 +270,20 @@ export default function InvoiceGenerator() {
       const h = img.height * ratio;
       pdf.addImage(dataUrl, "JPEG", (pageWidth - w) / 2, 20, w, h, undefined, "FAST");
       pdf.save(`${state.invoiceNumber || "invoice"}.pdf`);
-      toast.success("PDF downloaded", { id: "pdf" });
+      // Save snapshot so user can revisit/edit it later
+      try {
+        saveInvoiceSnapshot({
+          id: crypto.randomUUID(),
+          savedAt: Date.now(),
+          invoiceNumber: state.invoiceNumber,
+          total,
+          currencySymbol: currency.symbol,
+          snapshot: state,
+        });
+      } catch (err) {
+        console.warn("Could not save invoice snapshot:", err);
+      }
+      toast.success("PDF downloaded & saved", { id: "pdf" });
     } catch (e) {
       console.error("PDF error:", e);
       toast.error("Failed to generate PDF", { id: "pdf" });
@@ -275,6 +321,11 @@ export default function InvoiceGenerator() {
                 </SelectContent>
               </Select>
             </div>
+            <Link to="/saved">
+              <Button variant="outline" className="rounded-lg">
+                <FolderOpen className="mr-2 h-4 w-4" /> Saved
+              </Button>
+            </Link>
             <Button variant="outline" onClick={saveLocal} className="rounded-lg">
               <Save className="mr-2 h-4 w-4" /> Save
             </Button>
@@ -334,6 +385,33 @@ export default function InvoiceGenerator() {
                     onChange={(e) => e.target.files?.[0] && onLogo(e.target.files[0])}
                   />
                 </label>
+              )}
+              {state.logo && state.logoPalette.length > 0 && (
+                <div className="mt-3 flex items-center gap-2 print:hidden">
+                  <span className="text-xs text-muted-foreground">Theme:</span>
+                  {state.logoPalette.map((c) => (
+                    <button
+                      key={c}
+                      onClick={() => update("themeColor", c)}
+                      title={`Use ${c}`}
+                      aria-label={`Use color ${c}`}
+                      className={`h-6 w-6 rounded-full border-2 transition ${
+                        state.themeColor === c
+                          ? "border-foreground scale-110"
+                          : "border-white shadow"
+                      }`}
+                      style={{ backgroundColor: c }}
+                    />
+                  ))}
+                  {state.themeColor && (
+                    <button
+                      onClick={() => update("themeColor", null)}
+                      className="text-xs text-muted-foreground underline hover:text-foreground"
+                    >
+                      Reset
+                    </button>
+                  )}
+                </div>
               )}
             </div>
             <div className="text-right">
@@ -768,5 +846,83 @@ function EditableText({
     >
       {value}
     </span>
+  );
+}
+
+// ---------- color helpers ----------
+
+function rgbToHex(r: number, g: number, b: number) {
+  const h = (n: number) => n.toString(16).padStart(2, "0");
+  return `#${h(r)}${h(g)}${h(b)}`;
+}
+
+function readableForeground(hex: string): string {
+  const m = hex.replace("#", "").match(/.{2}/g);
+  if (!m) return "#ffffff";
+  const [r, g, b] = m.map((x) => parseInt(x, 16));
+  // perceived luminance
+  const l = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return l > 0.6 ? "#111111" : "#ffffff";
+}
+
+function extractPalette(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+): string[] {
+  try {
+    const { data } = ctx.getImageData(0, 0, w, h);
+    const buckets = new Map<string, { r: number; g: number; b: number; n: number }>();
+    const step = 4 * 4; // sample every 4 pixels
+    for (let i = 0; i < data.length; i += step) {
+      const r = data[i];
+      const g = data[i + 1];
+      const b = data[i + 2];
+      const a = data[i + 3];
+      if (a < 200) continue;
+      // skip near-white and near-black (likely background / outline)
+      const max = Math.max(r, g, b);
+      const min = Math.min(r, g, b);
+      if (max > 240 && min > 240) continue;
+      if (max < 25) continue;
+      // skip near-grays (low saturation)
+      if (max - min < 20) continue;
+      // quantize
+      const key = `${r >> 5}-${g >> 5}-${b >> 5}`;
+      const cur = buckets.get(key);
+      if (cur) {
+        cur.r += r;
+        cur.g += g;
+        cur.b += b;
+        cur.n += 1;
+      } else {
+        buckets.set(key, { r, g, b, n: 1 });
+      }
+    }
+    const sorted = [...buckets.values()].sort((a, b) => b.n - a.n);
+    const picked: string[] = [];
+    for (const c of sorted) {
+      const hex = rgbToHex(
+        Math.round(c.r / c.n),
+        Math.round(c.g / c.n),
+        Math.round(c.b / c.n),
+      );
+      // dedupe similar
+      if (picked.every((p) => colorDistance(p, hex) > 60)) {
+        picked.push(hex);
+      }
+      if (picked.length >= 5) break;
+    }
+    return picked;
+  } catch {
+    return [];
+  }
+}
+
+function colorDistance(a: string, b: string): number {
+  const pa = a.replace("#", "").match(/.{2}/g)?.map((x) => parseInt(x, 16)) ?? [0, 0, 0];
+  const pb = b.replace("#", "").match(/.{2}/g)?.map((x) => parseInt(x, 16)) ?? [0, 0, 0];
+  return Math.sqrt(
+    (pa[0] - pb[0]) ** 2 + (pa[1] - pb[1]) ** 2 + (pa[2] - pb[2]) ** 2,
   );
 }
