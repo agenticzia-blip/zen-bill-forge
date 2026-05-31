@@ -18,8 +18,8 @@ import { toast } from "sonner";
 type LineItem = {
   id: string;
   description: string;
-  quantity: number;
-  rate: number;
+  quantity: string;
+  rate: string;
 };
 
 type Currency = { code: string; symbol: string; label: string };
@@ -88,8 +88,8 @@ const today = () => new Date().toISOString().slice(0, 10);
 const newItem = (): LineItem => ({
   id: crypto.randomUUID(),
   description: "",
-  quantity: 1,
-  rate: 0,
+  quantity: "",
+  rate: "",
 });
 
 const defaultState = (): InvoiceState => ({
@@ -150,10 +150,11 @@ export default function InvoiceGenerator() {
       maximumFractionDigits: 2,
     })}`;
 
-  const subtotal = state.items.reduce(
-    (s, i) => s + (Number(i.quantity) || 0) * (Number(i.rate) || 0),
-    0,
-  );
+  const parseNum = (v: string | number) => {
+    const m = String(v ?? "").match(/-?\d+(\.\d+)?/);
+    return m ? Number(m[0]) : 0;
+  };
+  const subtotal = state.items.reduce((s, i) => s + parseNum(i.rate), 0);
   const taxAmount = subtotal * ((Number(state.taxRate) || 0) / 100);
   const total =
     subtotal + taxAmount - (Number(state.discount) || 0) + (Number(state.shipping) || 0);
@@ -483,8 +484,7 @@ export default function InvoiceGenerator() {
             </div>
             <div className="divide-y">
               {state.items.map((item) => {
-                const amount =
-                  (Number(item.quantity) || 0) * (Number(item.rate) || 0);
+                const amount = parseNum(item.rate);
                 return (
                   <div
                     key={item.id}
@@ -502,24 +502,21 @@ export default function InvoiceGenerator() {
                     </div>
                     <div className="col-span-2">
                       <Input
-                        type="number"
-                        min={0}
                         value={item.quantity}
                         onChange={(e) =>
-                          updateItem(item.id, { quantity: Number(e.target.value) })
+                          updateItem(item.id, { quantity: e.target.value })
                         }
+                        placeholder="1"
                         className="rounded-lg border-transparent bg-transparent text-right shadow-none focus-visible:border-input focus-visible:bg-background"
                       />
                     </div>
                     <div className="col-span-2">
                       <Input
-                        type="number"
-                        min={0}
-                        step="0.01"
                         value={item.rate}
                         onChange={(e) =>
-                          updateItem(item.id, { rate: Number(e.target.value) })
+                          updateItem(item.id, { rate: e.target.value })
                         }
+                        placeholder="0.00"
                         className="rounded-lg border-transparent bg-transparent text-right shadow-none focus-visible:border-input focus-visible:bg-background"
                       />
                     </div>
