@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { Plus, Trash2, Download, Printer, Upload, Save } from "lucide-react";
+import { Plus, Trash2, Download, Printer, Upload, Save, FolderOpen } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -14,6 +15,11 @@ import {
 import jsPDF from "jspdf";
 import { toJpeg } from "html-to-image";
 import { toast } from "sonner";
+import {
+  CURRENT_KEY,
+  LOAD_PENDING_KEY,
+  saveInvoiceSnapshot,
+} from "@/lib/invoice-storage";
 
 type LineItem = {
   id: string;
