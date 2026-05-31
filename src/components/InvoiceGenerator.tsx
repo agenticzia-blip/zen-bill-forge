@@ -236,7 +236,8 @@ export default function InvoiceGenerator() {
           file.type === "image/png"
             ? canvas.toDataURL("image/png")
             : canvas.toDataURL("image/jpeg", 0.9);
-        update("logo", out);
+        const palette = extractPalette(ctx, w, h);
+        setState((s) => ({ ...s, logo: out, logoPalette: palette }));
       };
       img.onerror = () => update("logo", dataUrl);
       img.src = dataUrl;
