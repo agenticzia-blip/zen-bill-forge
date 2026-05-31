@@ -321,6 +321,11 @@ export default function InvoiceGenerator() {
                 </SelectContent>
               </Select>
             </div>
+            <Link to="/saved">
+              <Button variant="outline" className="rounded-lg">
+                <FolderOpen className="mr-2 h-4 w-4" /> Saved
+              </Button>
+            </Link>
             <Button variant="outline" onClick={saveLocal} className="rounded-lg">
               <Save className="mr-2 h-4 w-4" /> Save
             </Button>
