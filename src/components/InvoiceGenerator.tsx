@@ -88,8 +88,8 @@ const today = () => new Date().toISOString().slice(0, 10);
 const newItem = (): LineItem => ({
   id: crypto.randomUUID(),
   description: "",
-  quantity: 1,
-  rate: 0,
+  quantity: "",
+  rate: "",
 });
 
 const defaultState = (): InvoiceState => ({
