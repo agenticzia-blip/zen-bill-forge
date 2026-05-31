@@ -150,10 +150,11 @@ export default function InvoiceGenerator() {
       maximumFractionDigits: 2,
     })}`;
 
-  const subtotal = state.items.reduce(
-    (s, i) => s + (Number(i.quantity) || 0) * (Number(i.rate) || 0),
-    0,
-  );
+  const parseNum = (v: string | number) => {
+    const m = String(v ?? "").match(/-?\d+(\.\d+)?/);
+    return m ? Number(m[0]) : 0;
+  };
+  const subtotal = state.items.reduce((s, i) => s + parseNum(i.rate), 0);
   const taxAmount = subtotal * ((Number(state.taxRate) || 0) / 100);
   const total =
     subtotal + taxAmount - (Number(state.discount) || 0) + (Number(state.shipping) || 0);
