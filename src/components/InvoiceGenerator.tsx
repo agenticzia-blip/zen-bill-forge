@@ -134,9 +134,31 @@ export default function InvoiceGenerator() {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) setState({ ...defaultState(), ...JSON.parse(saved) });
+      // clear "load pending" flag if set from /saved navigation
+      localStorage.removeItem(LOAD_PENDING_KEY);
     } catch {}
     setHydrated(true);
   }, []);
+
+  // Apply theme color to CSS variables (not background)
+  useEffect(() => {
+    const root = document.documentElement;
+    if (state.themeColor) {
+      root.style.setProperty("--primary", state.themeColor);
+      root.style.setProperty("--accent", state.themeColor);
+      const fg = readableForeground(state.themeColor);
+      root.style.setProperty("--primary-foreground", fg);
+      root.style.setProperty("--accent-foreground", fg);
+    } else {
+      root.style.removeProperty("--primary");
+      root.style.removeProperty("--accent");
+      root.style.removeProperty("--primary-foreground");
+      root.style.removeProperty("--accent-foreground");
+    }
+    return () => {
+      // don't clear on unmount — keep theme while editing
+    };
+  }, [state.themeColor]);
 
   useEffect(() => {
     if (!hydrated) return;
