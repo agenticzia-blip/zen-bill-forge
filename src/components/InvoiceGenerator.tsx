@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import jsPDF from "jspdf";
-import { toPng } from "html-to-image";
+import { toJpeg } from "html-to-image";
 import { toast } from "sonner";
 
 type LineItem = {
@@ -46,6 +46,8 @@ type InvoiceState = {
   discount: number;
   shipping: number;
   amountPaid: number;
+  scheduledPayment: number;
+  scheduledDate: string;
   notes: string;
   terms: string;
   currency: string;
@@ -77,6 +79,8 @@ const DEFAULT_LABELS: Record<string, string> = {
   total: "Total",
   amountPaid: "Amount Paid",
   balanceDue: "Balance Due",
+  scheduledPayment: "Scheduled Payment",
+  scheduledDate: "Scheduled Date",
 };
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -103,6 +107,8 @@ const defaultState = (): InvoiceState => ({
   discount: 0,
   shipping: 0,
   amountPaid: 0,
+  scheduledPayment: 0,
+  scheduledDate: "",
   notes: "",
   terms: "",
   currency: "USD",
@@ -210,8 +216,9 @@ export default function InvoiceGenerator() {
     toast.loading("Generating PDF...", { id: "pdf" });
     try {
       const node = invoiceRef.current;
-      const dataUrl = await toPng(node, {
-        pixelRatio: 2,
+      const dataUrl = await toJpeg(node, {
+        pixelRatio: 1.5,
+        quality: 0.82,
         backgroundColor: "#ffffff",
         cacheBust: true,
       });
@@ -221,13 +228,13 @@ export default function InvoiceGenerator() {
         img.onload = () => res();
         img.onerror = () => rej(new Error("image load failed"));
       });
-      const pdf = new jsPDF({ unit: "pt", format: "a4" });
+      const pdf = new jsPDF({ unit: "pt", format: "a4", compress: true });
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
       const ratio = Math.min(pageWidth / img.width, pageHeight / img.height);
       const w = img.width * ratio;
       const h = img.height * ratio;
-      pdf.addImage(dataUrl, "PNG", (pageWidth - w) / 2, 20, w, h);
+      pdf.addImage(dataUrl, "JPEG", (pageWidth - w) / 2, 20, w, h, undefined, "FAST");
       pdf.save(`${state.invoiceNumber || "invoice"}.pdf`);
       toast.success("PDF downloaded", { id: "pdf" });
     } catch (e) {
@@ -645,6 +652,33 @@ export default function InvoiceGenerator() {
                   className="text-sm font-semibold uppercase tracking-wide text-primary-foreground"
                 />
                 <span className="text-lg font-bold tabular-nums">{fmt(balanceDue)}</span>
+              </div>
+
+              {/* Scheduled Payment */}
+              <div className="mt-4 rounded-lg border bg-background p-4">
+                <EditableText
+                  value={state.labels.scheduledPayment}
+                  onChange={(v) => updateLabel("scheduledPayment", v)}
+                  className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                />
+                <div className="mt-2 grid grid-cols-2 gap-2">
+                  <Input
+                    type="number"
+                    min={0}
+                    value={state.scheduledPayment}
+                    onChange={(e) =>
+                      update("scheduledPayment", Number(e.target.value))
+                    }
+                    placeholder="Amount"
+                    className="rounded-lg text-right"
+                  />
+                  <Input
+                    type="date"
+                    value={state.scheduledDate}
+                    onChange={(e) => update("scheduledDate", e.target.value)}
+                    className="rounded-lg"
+                  />
+                </div>
               </div>
             </div>
           </div>
