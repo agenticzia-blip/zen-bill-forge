@@ -46,6 +46,8 @@ type InvoiceState = {
   discount: number;
   shipping: number;
   amountPaid: number;
+  scheduledPayment: number;
+  scheduledDate: string;
   notes: string;
   terms: string;
   currency: string;
