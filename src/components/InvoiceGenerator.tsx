@@ -270,7 +270,20 @@ export default function InvoiceGenerator() {
       const h = img.height * ratio;
       pdf.addImage(dataUrl, "JPEG", (pageWidth - w) / 2, 20, w, h, undefined, "FAST");
       pdf.save(`${state.invoiceNumber || "invoice"}.pdf`);
-      toast.success("PDF downloaded", { id: "pdf" });
+      // Save snapshot so user can revisit/edit it later
+      try {
+        saveInvoiceSnapshot({
+          id: crypto.randomUUID(),
+          savedAt: Date.now(),
+          invoiceNumber: state.invoiceNumber,
+          total,
+          currencySymbol: currency.symbol,
+          snapshot: state,
+        });
+      } catch (err) {
+        console.warn("Could not save invoice snapshot:", err);
+      }
+      toast.success("PDF downloaded & saved", { id: "pdf" });
     } catch (e) {
       console.error("PDF error:", e);
       toast.error("Failed to generate PDF", { id: "pdf" });
