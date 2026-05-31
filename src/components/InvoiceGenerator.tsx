@@ -105,6 +105,8 @@ const defaultState = (): InvoiceState => ({
   discount: 0,
   shipping: 0,
   amountPaid: 0,
+  scheduledPayment: 0,
+  scheduledDate: "",
   notes: "",
   terms: "",
   currency: "USD",
