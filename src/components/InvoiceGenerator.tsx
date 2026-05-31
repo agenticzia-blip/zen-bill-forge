@@ -121,6 +121,8 @@ const defaultState = (): InvoiceState => ({
   terms: "",
   currency: "USD",
   labels: { ...DEFAULT_LABELS },
+  themeColor: null,
+  logoPalette: [],
 });
 
 export default function InvoiceGenerator() {
