@@ -653,6 +653,33 @@ export default function InvoiceGenerator() {
                 />
                 <span className="text-lg font-bold tabular-nums">{fmt(balanceDue)}</span>
               </div>
+
+              {/* Scheduled Payment */}
+              <div className="mt-4 rounded-lg border bg-background p-4">
+                <EditableText
+                  value={state.labels.scheduledPayment}
+                  onChange={(v) => updateLabel("scheduledPayment", v)}
+                  className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                />
+                <div className="mt-2 grid grid-cols-2 gap-2">
+                  <Input
+                    type="number"
+                    min={0}
+                    value={state.scheduledPayment}
+                    onChange={(e) =>
+                      update("scheduledPayment", Number(e.target.value))
+                    }
+                    placeholder="Amount"
+                    className="rounded-lg text-right"
+                  />
+                  <Input
+                    type="date"
+                    value={state.scheduledDate}
+                    onChange={(e) => update("scheduledDate", e.target.value)}
+                    className="rounded-lg"
+                  />
+                </div>
+              </div>
             </div>
           </div>
         </div>
