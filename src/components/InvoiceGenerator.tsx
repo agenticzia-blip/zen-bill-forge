@@ -848,3 +848,81 @@ function EditableText({
     </span>
   );
 }
+
+// ---------- color helpers ----------
+
+function rgbToHex(r: number, g: number, b: number) {
+  const h = (n: number) => n.toString(16).padStart(2, "0");
+  return `#${h(r)}${h(g)}${h(b)}`;
+}
+
+function readableForeground(hex: string): string {
+  const m = hex.replace("#", "").match(/.{2}/g);
+  if (!m) return "#ffffff";
+  const [r, g, b] = m.map((x) => parseInt(x, 16));
+  // perceived luminance
+  const l = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return l > 0.6 ? "#111111" : "#ffffff";
+}
+
+function extractPalette(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+): string[] {
+  try {
+    const { data } = ctx.getImageData(0, 0, w, h);
+    const buckets = new Map<string, { r: number; g: number; b: number; n: number }>();
+    const step = 4 * 4; // sample every 4 pixels
+    for (let i = 0; i < data.length; i += step) {
+      const r = data[i];
+      const g = data[i + 1];
+      const b = data[i + 2];
+      const a = data[i + 3];
+      if (a < 200) continue;
+      // skip near-white and near-black (likely background / outline)
+      const max = Math.max(r, g, b);
+      const min = Math.min(r, g, b);
+      if (max > 240 && min > 240) continue;
+      if (max < 25) continue;
+      // skip near-grays (low saturation)
+      if (max - min < 20) continue;
+      // quantize
+      const key = `${r >> 5}-${g >> 5}-${b >> 5}`;
+      const cur = buckets.get(key);
+      if (cur) {
+        cur.r += r;
+        cur.g += g;
+        cur.b += b;
+        cur.n += 1;
+      } else {
+        buckets.set(key, { r, g, b, n: 1 });
+      }
+    }
+    const sorted = [...buckets.values()].sort((a, b) => b.n - a.n);
+    const picked: string[] = [];
+    for (const c of sorted) {
+      const hex = rgbToHex(
+        Math.round(c.r / c.n),
+        Math.round(c.g / c.n),
+        Math.round(c.b / c.n),
+      );
+      // dedupe similar
+      if (picked.every((p) => colorDistance(p, hex) > 60)) {
+        picked.push(hex);
+      }
+      if (picked.length >= 5) break;
+    }
+    return picked;
+  } catch {
+    return [];
+  }
+}
+
+function colorDistance(a: string, b: string): number {
+  const pa = a.replace("#", "").match(/.{2}/g)?.map((x) => parseInt(x, 16)) ?? [0, 0, 0];
+  const pb = b.replace("#", "").match(/.{2}/g)?.map((x) => parseInt(x, 16)) ?? [0, 0, 0];
+  return Math.sqrt(
+    (pa[0] - pb[0]) ** 2 + (pa[1] - pb[1]) ** 2 + (pa[2] - pb[2]) ** 2,
+  );
+}
