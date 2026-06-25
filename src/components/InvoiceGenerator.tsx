@@ -318,6 +318,31 @@ export default function InvoiceGenerator() {
     toast.success("Invoice saved locally");
   };
 
+  const loadSample = (sample: InvoiceSample) => {
+    setState((s) => ({
+      ...defaultState(),
+      // preserve logo, theme & currency the user already set
+      logo: s.logo,
+      logoPalette: s.logoPalette,
+      themeColor: s.themeColor,
+      currency: s.currency,
+      invoiceNumber: `INV-${Date.now().toString().slice(-6)}`,
+      from: SAMPLE_FROM,
+      billTo: "",
+      shipTo: "",
+      date: today(),
+      paymentTerms: `Net ${sample.timeline}`,
+      poNumber: sample.product,
+      items: sample.items.map((it) => ({ id: crypto.randomUUID(), ...it })),
+      notes: sample.notes,
+      amountPaid: sample.amountPaid,
+      scheduledPayment: sample.scheduledPayment,
+    }));
+    toast.success(`Loaded sample: ${sample.title}`);
+    if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+
   return (
     <div className="min-h-screen bg-muted/30 py-8 px-4 print:bg-white print:p-0">
       <div className="mx-auto max-w-5xl">
