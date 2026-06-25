@@ -289,13 +289,14 @@ export default function InvoiceGenerator() {
       const w = img.width * ratio;
       const h = img.height * ratio;
       pdf.addImage(dataUrl, "JPEG", (pageWidth - w) / 2, 20, w, h, undefined, "FAST");
-      pdf.save(`${state.invoiceNumber || "invoice"}.pdf`);
+      pdf.save(`${fileName}.pdf`);
       // Save snapshot so user can revisit/edit it later
       try {
         saveInvoiceSnapshot({
           id: crypto.randomUUID(),
           savedAt: Date.now(),
           invoiceNumber: state.invoiceNumber,
+          displayName,
           total,
           currencySymbol: currency.symbol,
           snapshot: state,
