@@ -98,8 +98,13 @@ function SavedPage() {
                         onClick={() => handleOpen(item)}
                         className="text-left text-sm font-medium hover:underline"
                       >
-                        {item.invoiceNumber || "Untitled"}
+                        {item.displayName || item.invoiceNumber || "Untitled"}
                       </button>
+                      {item.displayName && (
+                        <div className="text-xs text-muted-foreground">
+                          {item.invoiceNumber}
+                        </div>
+                      )}
                     </div>
                     <div className="col-span-4 text-sm text-muted-foreground">
                       {new Date(item.savedAt).toLocaleString()}
