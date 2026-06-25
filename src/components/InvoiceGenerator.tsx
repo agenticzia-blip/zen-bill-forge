@@ -192,6 +192,26 @@ export default function InvoiceGenerator() {
     subtotal + taxAmount - (Number(state.discount) || 0) + (Number(state.shipping) || 0);
   const balanceDue = total - (Number(state.amountPaid) || 0);
 
+  // Derive an invoice "name" automatically — client company / name first line,
+  // falling back to your own business, then the invoice number.
+  const firstLine = (s: string) =>
+    (s || "")
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .find((l) => l.length > 0) ?? "";
+  const clientName = firstLine(state.billTo) || firstLine(state.from);
+  const displayName = [clientName, state.invoiceNumber, state.date]
+    .filter(Boolean)
+    .join(" — ");
+  const safeFile = (s: string) =>
+    s.replace(/[\\/:*?"<>|]+/g, "-").replace(/\s+/g, " ").trim() || "invoice";
+  const fileName = safeFile(
+    clientName
+      ? `${clientName} ${state.invoiceNumber || ""}`.trim()
+      : state.invoiceNumber || "invoice",
+  );
+
+
   const updateLabel = (k: string, v: string) =>
     setState((s) => ({ ...s, labels: { ...s.labels, [k]: v } }));
 
@@ -269,13 +289,14 @@ export default function InvoiceGenerator() {
       const w = img.width * ratio;
       const h = img.height * ratio;
       pdf.addImage(dataUrl, "JPEG", (pageWidth - w) / 2, 20, w, h, undefined, "FAST");
-      pdf.save(`${state.invoiceNumber || "invoice"}.pdf`);
+      pdf.save(`${fileName}.pdf`);
       // Save snapshot so user can revisit/edit it later
       try {
         saveInvoiceSnapshot({
           id: crypto.randomUUID(),
           savedAt: Date.now(),
           invoiceNumber: state.invoiceNumber,
+          displayName,
           total,
           currencySymbol: currency.symbol,
           snapshot: state,
@@ -870,54 +891,80 @@ function extractPalette(
   w: number,
   h: number,
 ): string[] {
-  try {
-    const { data } = ctx.getImageData(0, 0, w, h);
-    const buckets = new Map<string, { r: number; g: number; b: number; n: number }>();
-    const step = 4 * 4; // sample every 4 pixels
-    for (let i = 0; i < data.length; i += step) {
-      const r = data[i];
-      const g = data[i + 1];
-      const b = data[i + 2];
-      const a = data[i + 3];
-      if (a < 200) continue;
-      // skip near-white and near-black (likely background / outline)
-      const max = Math.max(r, g, b);
-      const min = Math.min(r, g, b);
-      if (max > 240 && min > 240) continue;
-      if (max < 25) continue;
-      // skip near-grays (low saturation)
-      if (max - min < 20) continue;
-      // quantize
-      const key = `${r >> 5}-${g >> 5}-${b >> 5}`;
-      const cur = buckets.get(key);
-      if (cur) {
-        cur.r += r;
-        cur.g += g;
-        cur.b += b;
-        cur.n += 1;
-      } else {
-        buckets.set(key, { r, g, b, n: 1 });
+  const run = (opts: {
+    requireSaturation: boolean;
+    skipNearWhite: boolean;
+    skipNearBlack: boolean;
+  }): string[] => {
+    try {
+      const { data } = ctx.getImageData(0, 0, w, h);
+      const buckets = new Map<
+        string,
+        { r: number; g: number; b: number; n: number }
+      >();
+      const step = 4 * 4;
+      for (let i = 0; i < data.length; i += step) {
+        const r = data[i];
+        const g = data[i + 1];
+        const b = data[i + 2];
+        const a = data[i + 3];
+        if (a < 200) continue;
+        const max = Math.max(r, g, b);
+        const min = Math.min(r, g, b);
+        if (opts.skipNearWhite && max > 240 && min > 240) continue;
+        if (opts.skipNearBlack && max < 25) continue;
+        if (opts.requireSaturation && max - min < 20) continue;
+        const key = `${r >> 5}-${g >> 5}-${b >> 5}`;
+        const cur = buckets.get(key);
+        if (cur) {
+          cur.r += r;
+          cur.g += g;
+          cur.b += b;
+          cur.n += 1;
+        } else {
+          buckets.set(key, { r, g, b, n: 1 });
+        }
       }
-    }
-    const sorted = [...buckets.values()].sort((a, b) => b.n - a.n);
-    const picked: string[] = [];
-    for (const c of sorted) {
-      const hex = rgbToHex(
-        Math.round(c.r / c.n),
-        Math.round(c.g / c.n),
-        Math.round(c.b / c.n),
-      );
-      // dedupe similar
-      if (picked.every((p) => colorDistance(p, hex) > 60)) {
-        picked.push(hex);
+      const sorted = [...buckets.values()].sort((a, b) => b.n - a.n);
+      const picked: string[] = [];
+      for (const c of sorted) {
+        const hex = rgbToHex(
+          Math.round(c.r / c.n),
+          Math.round(c.g / c.n),
+          Math.round(c.b / c.n),
+        );
+        if (picked.every((p) => colorDistance(p, hex) > 60)) picked.push(hex);
+        if (picked.length >= 5) break;
       }
-      if (picked.length >= 5) break;
+      return picked;
+    } catch {
+      return [];
     }
-    return picked;
-  } catch {
-    return [];
-  }
+  };
+
+  // Pass 1: saturated, non-background colors (best for colorful logos)
+  let palette = run({
+    requireSaturation: true,
+    skipNearWhite: true,
+    skipNearBlack: true,
+  });
+  if (palette.length > 0) return palette;
+  // Pass 2: allow grays (mono logos), still skip pure white/black
+  palette = run({
+    requireSaturation: false,
+    skipNearWhite: true,
+    skipNearBlack: true,
+  });
+  if (palette.length > 0) return palette;
+  // Pass 3: include black (white/black logos)
+  palette = run({
+    requireSaturation: false,
+    skipNearWhite: true,
+    skipNearBlack: false,
+  });
+  return palette;
 }
+
 
 function colorDistance(a: string, b: string): number {
   const pa = a.replace("#", "").match(/.{2}/g)?.map((x) => parseInt(x, 16)) ?? [0, 0, 0];

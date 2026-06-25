@@ -6,10 +6,14 @@ export type SavedInvoice = {
   id: string;
   savedAt: number;
   invoiceNumber: string;
+  displayName?: string;
   total: number;
   currencySymbol: string;
   snapshot: unknown;
 };
+
+// Effectively unlimited capacity — keep up to 10,000 invoices locally.
+const MAX_SAVED = 10000;
 
 export function getSavedInvoices(): SavedInvoice[] {
   try {
@@ -22,25 +26,42 @@ export function getSavedInvoices(): SavedInvoice[] {
   }
 }
 
+function trySetList(list: SavedInvoice[]): boolean {
+  try {
+    localStorage.setItem(SAVED_LIST_KEY, JSON.stringify(list));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function saveInvoiceSnapshot(entry: SavedInvoice) {
   const list = getSavedInvoices();
   // Replace if same invoiceNumber, else prepend
   const filtered = list.filter((i) => i.invoiceNumber !== entry.invoiceNumber);
   filtered.unshift(entry);
-  try {
-    localStorage.setItem(SAVED_LIST_KEY, JSON.stringify(filtered.slice(0, 50)));
-  } catch {
-    // strip logos to fit quota
-    try {
-      const slim = filtered.slice(0, 50).map((i) => ({
-        ...i,
-        snapshot:
-          i.snapshot && typeof i.snapshot === "object"
-            ? { ...(i.snapshot as Record<string, unknown>), logo: null }
-            : i.snapshot,
-      }));
-      localStorage.setItem(SAVED_LIST_KEY, JSON.stringify(slim));
-    } catch {}
+  let trimmed = filtered.slice(0, MAX_SAVED);
+  if (trySetList(trimmed)) return;
+
+  // Quota hit — progressively shed logos from oldest first, then drop oldest entries.
+  const stripLogo = (i: SavedInvoice): SavedInvoice =>
+    i.snapshot && typeof i.snapshot === "object"
+      ? {
+          ...i,
+          snapshot: {
+            ...(i.snapshot as Record<string, unknown>),
+            logo: null,
+          },
+        }
+      : i;
+
+  for (let i = trimmed.length - 1; i >= 0; i--) {
+    trimmed[i] = stripLogo(trimmed[i]);
+    if (trySetList(trimmed)) return;
+  }
+  while (trimmed.length > 1) {
+    trimmed = trimmed.slice(0, Math.floor(trimmed.length / 2));
+    if (trySetList(trimmed)) return;
   }
 }
 
@@ -48,3 +69,4 @@ export function deleteSavedInvoice(id: string) {
   const list = getSavedInvoices().filter((i) => i.id !== id);
   localStorage.setItem(SAVED_LIST_KEY, JSON.stringify(list));
 }
+
