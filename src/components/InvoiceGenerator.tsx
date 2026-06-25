@@ -20,6 +20,8 @@ import {
   LOAD_PENDING_KEY,
   saveInvoiceSnapshot,
 } from "@/lib/invoice-storage";
+import { SAMPLES, SAMPLE_FROM, type InvoiceSample } from "@/lib/invoice-samples";
+
 
 type LineItem = {
   id: string;
