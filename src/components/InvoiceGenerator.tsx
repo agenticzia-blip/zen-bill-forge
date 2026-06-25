@@ -192,6 +192,26 @@ export default function InvoiceGenerator() {
     subtotal + taxAmount - (Number(state.discount) || 0) + (Number(state.shipping) || 0);
   const balanceDue = total - (Number(state.amountPaid) || 0);
 
+  // Derive an invoice "name" automatically — client company / name first line,
+  // falling back to your own business, then the invoice number.
+  const firstLine = (s: string) =>
+    (s || "")
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .find((l) => l.length > 0) ?? "";
+  const clientName = firstLine(state.billTo) || firstLine(state.from);
+  const displayName = [clientName, state.invoiceNumber, state.date]
+    .filter(Boolean)
+    .join(" — ");
+  const safeFile = (s: string) =>
+    s.replace(/[\\/:*?"<>|]+/g, "-").replace(/\s+/g, " ").trim() || "invoice";
+  const fileName = safeFile(
+    clientName
+      ? `${clientName} ${state.invoiceNumber || ""}`.trim()
+      : state.invoiceNumber || "invoice",
+  );
+
+
   const updateLabel = (k: string, v: string) =>
     setState((s) => ({ ...s, labels: { ...s.labels, [k]: v } }));
 
