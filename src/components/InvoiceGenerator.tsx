@@ -20,6 +20,8 @@ import {
   LOAD_PENDING_KEY,
   saveInvoiceSnapshot,
 } from "@/lib/invoice-storage";
+import { SAMPLES, SAMPLE_FROM, type InvoiceSample } from "@/lib/invoice-samples";
+
 
 type LineItem = {
   id: string;
@@ -315,6 +317,31 @@ export default function InvoiceGenerator() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     toast.success("Invoice saved locally");
   };
+
+  const loadSample = (sample: InvoiceSample) => {
+    setState((s) => ({
+      ...defaultState(),
+      // preserve logo, theme & currency the user already set
+      logo: s.logo,
+      logoPalette: s.logoPalette,
+      themeColor: s.themeColor,
+      currency: s.currency,
+      invoiceNumber: `INV-${Date.now().toString().slice(-6)}`,
+      from: SAMPLE_FROM,
+      billTo: "",
+      shipTo: "",
+      date: today(),
+      paymentTerms: `Net ${sample.timeline}`,
+      poNumber: sample.product,
+      items: sample.items.map((it) => ({ id: crypto.randomUUID(), ...it })),
+      notes: sample.notes,
+      amountPaid: sample.amountPaid,
+      scheduledPayment: sample.scheduledPayment,
+    }));
+    toast.success(`Loaded sample: ${sample.title}`);
+    if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
 
   return (
     <div className="min-h-screen bg-muted/30 py-8 px-4 print:bg-white print:p-0">
@@ -779,10 +806,76 @@ export default function InvoiceGenerator() {
             </div>
           </div>
         </div>
+
+        {/* Samples — visible only outside print, sits below the invoice card */}
+        <div className="mt-10 print:hidden">
+          <div className="mb-4">
+            <h2 className="text-xl font-bold tracking-tight">Sample Invoices</h2>
+            <p className="text-sm text-muted-foreground">
+              Pre-built Appoint Funnels invoices. Click "Use this sample" to load it
+              straight into the editor above.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            {SAMPLES.map((sample) => {
+              const subtotal = sample.items.reduce(
+                (sum, it) => sum + (Number(it.rate.match(/-?\d+(\.\d+)?/)?.[0]) || 0),
+                0,
+              );
+              return (
+                <div
+                  key={sample.id}
+                  className="flex flex-col rounded-2xl border bg-card p-5 shadow-sm"
+                >
+                  <div className="mb-2 flex items-start justify-between gap-3">
+                    <div>
+                      <h3 className="text-base font-semibold">{sample.title}</h3>
+                      <p className="text-xs text-muted-foreground">{sample.tagline}</p>
+                    </div>
+                    <span className="rounded-full bg-primary/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-primary">
+                      {sample.product}
+                    </span>
+                  </div>
+                  <ul className="mt-2 space-y-1 text-sm">
+                    {sample.items.map((it, idx) => (
+                      <li
+                        key={idx}
+                        className="flex items-center justify-between gap-3 border-b border-dashed border-border/60 py-1 last:border-0"
+                      >
+                        <span className="truncate text-foreground">
+                          {it.description}
+                        </span>
+                        <span className="shrink-0 tabular-nums text-muted-foreground">
+                          ${it.rate}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="mt-3 flex items-center justify-between border-t pt-3">
+                    <span className="text-sm text-muted-foreground">Subtotal</span>
+                    <span className="text-base font-bold tabular-nums">
+                      ${subtotal.toLocaleString(undefined, {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}
+                    </span>
+                  </div>
+                  <Button
+                    onClick={() => loadSample(sample)}
+                    className="mt-4 rounded-lg"
+                  >
+                    <Plus className="mr-2 h-4 w-4" /> Use this sample
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
       </div>
     </div>
   );
 }
+
 
 function FieldRow({
   label,
