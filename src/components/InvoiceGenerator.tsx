@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Plus, Trash2, Download, Printer, Upload, Save, FolderOpen } from "lucide-react";
-import { Link } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -132,6 +132,7 @@ export default function InvoiceGenerator() {
   const [state, setState] = useState<InvoiceState>(defaultState);
   const [hydrated, setHydrated] = useState(false);
   const invoiceRef = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     try {
@@ -328,6 +329,17 @@ export default function InvoiceGenerator() {
     }
   };
 
+  const saveAndOpenSaved = async () => {
+    try {
+      await saveInvoiceSnapshotAsync(buildSavedEntry());
+      toast.success("Invoice saved");
+      navigate({ to: "/saved" });
+    } catch (err) {
+      console.error("Save error:", err);
+      toast.error("Could not save invoice");
+    }
+  };
+
   const loadSample = (sample: InvoiceSample) => {
     setState((s) => ({
       ...defaultState(),
@@ -379,11 +391,9 @@ export default function InvoiceGenerator() {
                 </SelectContent>
               </Select>
             </div>
-            <Link to="/saved">
-              <Button variant="outline" className="rounded-lg">
-                <FolderOpen className="mr-2 h-4 w-4" /> Saved
-              </Button>
-            </Link>
+            <Button variant="outline" onClick={saveAndOpenSaved} className="rounded-lg">
+              <FolderOpen className="mr-2 h-4 w-4" /> Saved
+            </Button>
             <Button variant="outline" onClick={saveLocal} className="rounded-lg">
               <Save className="mr-2 h-4 w-4" /> Save
             </Button>
