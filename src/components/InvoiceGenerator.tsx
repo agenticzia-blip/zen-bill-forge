@@ -18,7 +18,8 @@ import { toast } from "sonner";
 import {
   CURRENT_KEY,
   LOAD_PENDING_KEY,
-  saveInvoiceSnapshot,
+  type SavedInvoice,
+  saveInvoiceSnapshotAsync,
 } from "@/lib/invoice-storage";
 import { SAMPLES, SAMPLE_FROM, type InvoiceSample } from "@/lib/invoice-samples";
 
@@ -213,6 +214,16 @@ export default function InvoiceGenerator() {
       : state.invoiceNumber || "invoice",
   );
 
+  const buildSavedEntry = (): SavedInvoice => ({
+    id: crypto.randomUUID(),
+    savedAt: Date.now(),
+    invoiceNumber: state.invoiceNumber,
+    displayName,
+    total,
+    currencySymbol: currency.symbol,
+    snapshot: state,
+  });
+
 
   const updateLabel = (k: string, v: string) =>
     setState((s) => ({ ...s, labels: { ...s.labels, [k]: v } }));
@@ -271,6 +282,9 @@ export default function InvoiceGenerator() {
     if (!invoiceRef.current) return;
     toast.loading("Generating PDF...", { id: "pdf" });
     try {
+      // Save first so the editable invoice is kept even if the browser blocks/fails the PDF file write.
+      await saveInvoiceSnapshotAsync(buildSavedEntry());
+
       const node = invoiceRef.current;
       const dataUrl = await toJpeg(node, {
         pixelRatio: 1.5,
@@ -292,20 +306,6 @@ export default function InvoiceGenerator() {
       const h = img.height * ratio;
       pdf.addImage(dataUrl, "JPEG", (pageWidth - w) / 2, 20, w, h, undefined, "FAST");
       pdf.save(`${fileName}.pdf`);
-      // Save snapshot so user can revisit/edit it later
-      try {
-        saveInvoiceSnapshot({
-          id: crypto.randomUUID(),
-          savedAt: Date.now(),
-          invoiceNumber: state.invoiceNumber,
-          displayName,
-          total,
-          currencySymbol: currency.symbol,
-          snapshot: state,
-        });
-      } catch (err) {
-        console.warn("Could not save invoice snapshot:", err);
-      }
       toast.success("PDF downloaded & saved", { id: "pdf" });
     } catch (e) {
       console.error("PDF error:", e);
@@ -313,9 +313,19 @@ export default function InvoiceGenerator() {
     }
   };
 
-  const saveLocal = () => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    toast.success("Invoice saved locally");
+  const saveLocal = async () => {
+    try {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      } catch {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...state, logo: null }));
+      }
+      await saveInvoiceSnapshotAsync(buildSavedEntry());
+      toast.success("Invoice saved to Saved Invoices");
+    } catch (err) {
+      console.error("Save error:", err);
+      toast.error("Could not save invoice");
+    }
   };
 
   const loadSample = (sample: InvoiceSample) => {
