@@ -282,9 +282,15 @@ export default function InvoiceGenerator() {
   const downloadPDF = async () => {
     if (!invoiceRef.current) return;
     toast.loading("Generating PDF...", { id: "pdf" });
+    let saved = false;
     try {
       // Save first so the editable invoice is kept even if the browser blocks/fails the PDF file write.
-      await saveInvoiceSnapshotAsync(buildSavedEntry());
+      try {
+        await saveInvoiceSnapshotAsync(buildSavedEntry());
+        saved = true;
+      } catch (saveErr) {
+        console.warn("Could not save invoice snapshot:", saveErr);
+      }
 
       const node = invoiceRef.current;
       const dataUrl = await toJpeg(node, {
@@ -307,7 +313,9 @@ export default function InvoiceGenerator() {
       const h = img.height * ratio;
       pdf.addImage(dataUrl, "JPEG", (pageWidth - w) / 2, 20, w, h, undefined, "FAST");
       pdf.save(`${fileName}.pdf`);
-      toast.success("PDF downloaded & saved", { id: "pdf" });
+      toast.success(saved ? "PDF downloaded & saved" : "PDF downloaded, but not saved", {
+        id: "pdf",
+      });
     } catch (e) {
       console.error("PDF error:", e);
       toast.error("Failed to generate PDF", { id: "pdf" });
