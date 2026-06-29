@@ -8,8 +8,8 @@ import {
   CURRENT_KEY,
   LOAD_PENDING_KEY,
   type SavedInvoice,
-  deleteSavedInvoice,
-  getSavedInvoices,
+  deleteSavedInvoiceAsync,
+  getSavedInvoicesAsync,
 } from "@/lib/invoice-storage";
 
 export const Route = createFileRoute("/saved")({
@@ -28,15 +28,35 @@ export const Route = createFileRoute("/saved")({
 
 function SavedPage() {
   const [list, setList] = useState<SavedInvoice[]>([]);
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
-    setList(getSavedInvoices());
+    let alive = true;
+    getSavedInvoicesAsync()
+      .then((items) => {
+        if (alive) setList(items);
+      })
+      .catch(() => toast.error("Could not load saved invoices"))
+      .finally(() => {
+        if (alive) setLoading(false);
+      });
+    return () => {
+      alive = false;
+    };
   }, []);
 
   const handleOpen = (item: SavedInvoice) => {
     try {
-      localStorage.setItem(CURRENT_KEY, JSON.stringify(item.snapshot));
+      try {
+        localStorage.setItem(CURRENT_KEY, JSON.stringify(item.snapshot));
+      } catch {
+        const snapshot =
+          item.snapshot && typeof item.snapshot === "object"
+            ? { ...(item.snapshot as Record<string, unknown>), logo: null }
+            : item.snapshot;
+        localStorage.setItem(CURRENT_KEY, JSON.stringify(snapshot));
+      }
       localStorage.setItem(LOAD_PENDING_KEY, "1");
       navigate({ to: "/" });
     } catch {
@@ -44,9 +64,9 @@ function SavedPage() {
     }
   };
 
-  const handleDelete = (id: string) => {
-    deleteSavedInvoice(id);
-    setList(getSavedInvoices());
+  const handleDelete = async (id: string) => {
+    await deleteSavedInvoiceAsync(id);
+    setList((items) => items.filter((item) => item.id !== id));
     toast.success("Invoice removed");
   };
 
@@ -68,12 +88,17 @@ function SavedPage() {
             </Link>
           </div>
 
-          {list.length === 0 ? (
+          {loading ? (
+            <div className="rounded-2xl border bg-card p-12 text-center shadow-sm">
+              <FileText className="mx-auto mb-3 h-10 w-10 animate-pulse text-muted-foreground" />
+              <h2 className="text-lg font-semibold">Loading saved invoices...</h2>
+            </div>
+          ) : list.length === 0 ? (
             <div className="rounded-2xl border bg-card p-12 text-center shadow-sm">
               <FileText className="mx-auto mb-3 h-10 w-10 text-muted-foreground" />
               <h2 className="text-lg font-semibold">No saved invoices yet</h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                When you download an invoice as PDF, it will appear here.
+                Click Save or download an invoice as PDF and it will appear here.
               </p>
               <Link to="/">
                 <Button className="mt-4 rounded-lg">Create an invoice</Button>
@@ -105,6 +130,9 @@ function SavedPage() {
                           {item.invoiceNumber}
                         </div>
                       )}
+                      <div className="text-[11px] text-muted-foreground">
+                        Kept for 60 years
+                      </div>
                     </div>
                     <div className="col-span-4 text-sm text-muted-foreground">
                       {new Date(item.savedAt).toLocaleString()}
