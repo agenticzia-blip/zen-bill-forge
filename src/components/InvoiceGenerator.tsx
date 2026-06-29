@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Plus, Trash2, Download, Printer, Upload, Save, FolderOpen } from "lucide-react";
-import { Link } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -18,7 +18,8 @@ import { toast } from "sonner";
 import {
   CURRENT_KEY,
   LOAD_PENDING_KEY,
-  saveInvoiceSnapshot,
+  type SavedInvoice,
+  saveInvoiceSnapshotAsync,
 } from "@/lib/invoice-storage";
 import { SAMPLES, SAMPLE_FROM, type InvoiceSample } from "@/lib/invoice-samples";
 
@@ -131,6 +132,7 @@ export default function InvoiceGenerator() {
   const [state, setState] = useState<InvoiceState>(defaultState);
   const [hydrated, setHydrated] = useState(false);
   const invoiceRef = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     try {
@@ -213,6 +215,16 @@ export default function InvoiceGenerator() {
       : state.invoiceNumber || "invoice",
   );
 
+  const buildSavedEntry = (): SavedInvoice => ({
+    id: crypto.randomUUID(),
+    savedAt: Date.now(),
+    invoiceNumber: state.invoiceNumber,
+    displayName,
+    total,
+    currencySymbol: currency.symbol,
+    snapshot: state,
+  });
+
 
   const updateLabel = (k: string, v: string) =>
     setState((s) => ({ ...s, labels: { ...s.labels, [k]: v } }));
@@ -270,7 +282,16 @@ export default function InvoiceGenerator() {
   const downloadPDF = async () => {
     if (!invoiceRef.current) return;
     toast.loading("Generating PDF...", { id: "pdf" });
+    let saved = false;
     try {
+      // Save first so the editable invoice is kept even if the browser blocks/fails the PDF file write.
+      try {
+        await saveInvoiceSnapshotAsync(buildSavedEntry());
+        saved = true;
+      } catch (saveErr) {
+        console.warn("Could not save invoice snapshot:", saveErr);
+      }
+
       const node = invoiceRef.current;
       const dataUrl = await toJpeg(node, {
         pixelRatio: 1.5,
@@ -292,30 +313,39 @@ export default function InvoiceGenerator() {
       const h = img.height * ratio;
       pdf.addImage(dataUrl, "JPEG", (pageWidth - w) / 2, 20, w, h, undefined, "FAST");
       pdf.save(`${fileName}.pdf`);
-      // Save snapshot so user can revisit/edit it later
-      try {
-        saveInvoiceSnapshot({
-          id: crypto.randomUUID(),
-          savedAt: Date.now(),
-          invoiceNumber: state.invoiceNumber,
-          displayName,
-          total,
-          currencySymbol: currency.symbol,
-          snapshot: state,
-        });
-      } catch (err) {
-        console.warn("Could not save invoice snapshot:", err);
-      }
-      toast.success("PDF downloaded & saved", { id: "pdf" });
+      toast.success(saved ? "PDF downloaded & saved" : "PDF downloaded, but not saved", {
+        id: "pdf",
+      });
     } catch (e) {
       console.error("PDF error:", e);
       toast.error("Failed to generate PDF", { id: "pdf" });
     }
   };
 
-  const saveLocal = () => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    toast.success("Invoice saved locally");
+  const saveLocal = async () => {
+    try {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      } catch {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...state, logo: null }));
+      }
+      await saveInvoiceSnapshotAsync(buildSavedEntry());
+      toast.success("Invoice saved to Saved Invoices");
+    } catch (err) {
+      console.error("Save error:", err);
+      toast.error("Could not save invoice");
+    }
+  };
+
+  const saveAndOpenSaved = async () => {
+    try {
+      await saveInvoiceSnapshotAsync(buildSavedEntry());
+      toast.success("Invoice saved");
+      navigate({ to: "/saved" });
+    } catch (err) {
+      console.error("Save error:", err);
+      toast.error("Could not save invoice");
+    }
   };
 
   const loadSample = (sample: InvoiceSample) => {
@@ -369,11 +399,9 @@ export default function InvoiceGenerator() {
                 </SelectContent>
               </Select>
             </div>
-            <Link to="/saved">
-              <Button variant="outline" className="rounded-lg">
-                <FolderOpen className="mr-2 h-4 w-4" /> Saved
-              </Button>
-            </Link>
+            <Button variant="outline" onClick={saveAndOpenSaved} className="rounded-lg">
+              <FolderOpen className="mr-2 h-4 w-4" /> Saved
+            </Button>
             <Button variant="outline" onClick={saveLocal} className="rounded-lg">
               <Save className="mr-2 h-4 w-4" /> Save
             </Button>
