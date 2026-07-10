@@ -46,16 +46,16 @@ export const SAMPLES: InvoiceSample[] = [
     product: "AI Sales System",
     timeline: "30",
     items: [
-      { description: "CRM setup (HubSpot / GoHighLevel)", quantity: "1", rate: "180" },
-      { description: "Pipeline & automation build", quantity: "1", rate: "220" },
-      { description: "Cold email sequences (Instantly.ai)", quantity: "1", rate: "150" },
-      { description: "Leads scraping & verification", quantity: "1", rate: "95" },
-      { description: "Reporting dashboard", quantity: "1", rate: "75" },
-      { description: "Team training (2 sessions)", quantity: "1", rate: "80" },
+      { description: "Mailboxes Cost (20 @ $3.50)", quantity: "1", rate: "70" },
+      { description: "Leads Cost ($50 / 10k)", quantity: "1", rate: "90" },
+      { description: "Instantly Plan (Split)", quantity: "1", rate: "48.50" },
+      { description: "Email Verification", quantity: "1", rate: "50" },
+      { description: "Personalization Credits", quantity: "1", rate: "10" },
     ],
-    notes: "Mailboxes & verification tools billed monthly at cost.",
-    amountPaid: 400,
-    scheduledPayment: 400,
+    notes:
+      "Total Monthly Investment $268.50\nExpected Return $9,000 - $15,000\nEstimated ROI 3,252% - 5,487%\nTime to Results 65 Days\nMailboxes & verification tools billed monthly at cost.",
+    amountPaid: 268.5,
+    scheduledPayment: 0,
   },
 ];
 
