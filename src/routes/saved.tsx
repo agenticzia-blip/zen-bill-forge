@@ -64,9 +64,14 @@ function SavedPage() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    await deleteSavedInvoiceAsync(id);
-    setList((items) => items.filter((item) => item.id !== id));
+  const handleDelete = async (item: SavedInvoice) => {
+    await deleteSavedInvoiceAsync(item.id, item.invoiceNumber);
+    setList((items) =>
+      items.filter(
+        (invoice) =>
+          invoice.id !== item.id && invoice.invoiceNumber !== item.invoiceNumber,
+      ),
+    );
     toast.success("Invoice removed");
   };
 
@@ -154,7 +159,7 @@ function SavedPage() {
                         <Pencil className="h-4 w-4" />
                       </button>
                       <button
-                        onClick={() => handleDelete(item.id)}
+                        onClick={() => handleDelete(item)}
                         className="rounded p-1 text-muted-foreground hover:text-destructive"
                         aria-label="Delete"
                         title="Delete"

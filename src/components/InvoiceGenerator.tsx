@@ -204,6 +204,10 @@ export default function InvoiceGenerator() {
       .map((l) => l.trim())
       .find((l) => l.length > 0) ?? "";
   const clientName = firstLine(state.billTo) || firstLine(state.from);
+  const clientFirstName = firstLine(state.billTo).split(/\s+/).filter(Boolean)[0] || "";
+  const personalizeText = (text: string) =>
+    clientFirstName ? text.replace(/{{\s*firstName\s*}}/gi, clientFirstName) : text;
+  const personalizedNotes = personalizeText(state.notes);
   const displayName = [clientName, state.invoiceNumber, state.date]
     .filter(Boolean)
     .join(" — ");
@@ -222,7 +226,7 @@ export default function InvoiceGenerator() {
     displayName,
     total,
     currencySymbol: currency.symbol,
-    snapshot: state,
+    snapshot: { ...state, notes: personalizedNotes },
   });
 
 
@@ -712,7 +716,7 @@ export default function InvoiceGenerator() {
                   className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
                 />
                 <Textarea
-                  value={state.notes}
+                  value={personalizedNotes}
                   onChange={(e) => update("notes", e.target.value)}
                   placeholder="Notes — any relevant information not already covered"
                   rows={3}
