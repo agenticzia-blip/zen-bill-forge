@@ -65,7 +65,7 @@ function SavedPage() {
   };
 
   const handleDelete = async (item: SavedInvoice) => {
-    await deleteSavedInvoiceAsync(item.id);
+    await deleteSavedInvoiceAsync(item.id, item.invoiceNumber);
     setList((items) =>
       items.filter(
         (invoice) =>

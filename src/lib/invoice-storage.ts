@@ -256,12 +256,20 @@ export async function saveInvoiceSnapshotAsync(entry: SavedInvoice): Promise<Sav
     const db = await openDb();
     try {
       const existing = await getAllFromDb(db);
-      const tx = db.transaction(DB_STORE, "readwrite");
+      const tx = db.transaction(
+        db.objectStoreNames.contains(DB_DELETED_STORE)
+          ? [DB_STORE, DB_DELETED_STORE]
+          : [DB_STORE],
+        "readwrite",
+      );
       const store = tx.objectStore(DB_STORE);
       existing
         .filter((item) => sameInvoice(item, nextEntry) && item.id !== nextEntry.id)
         .forEach((item) => store.delete(item.id));
       store.put(nextEntry);
+      if (db.objectStoreNames.contains(DB_DELETED_STORE)) {
+        tx.objectStore(DB_DELETED_STORE).delete(getEntryKey(nextEntry));
+      }
       await txDone(tx);
       await pruneDb(db);
     } finally {
@@ -282,29 +290,30 @@ export async function saveInvoiceSnapshotAsync(entry: SavedInvoice): Promise<Sav
   }
 }
 
-export async function deleteSavedInvoiceAsync(id: string) {
-  let invoiceNumber: string | undefined;
+export async function deleteSavedInvoiceAsync(id: string, invoiceNumber?: string) {
   try {
     const db = await openDb();
     try {
       const existing = await getAllFromDb(db);
-      invoiceNumber = existing.find((item) => item.id === id)?.invoiceNumber;
+      invoiceNumber = invoiceNumber ?? existing.find((item) => item.id === id)?.invoiceNumber;
       const targetKey = invoiceKey(id, invoiceNumber);
-      const tx = db.transaction(DB_STORE, "readwrite");
+      const tx = db.transaction(
+        db.objectStoreNames.contains(DB_DELETED_STORE)
+          ? [DB_STORE, DB_DELETED_STORE]
+          : [DB_STORE],
+        "readwrite",
+      );
       const store = tx.objectStore(DB_STORE);
       existing
         .filter((item) => item.id === id || getEntryKey(item) === targetKey)
         .forEach((item) => store.delete(item.id));
-      await txDone(tx);
-
       if (db.objectStoreNames.contains(DB_DELETED_STORE)) {
-        const deletedTx = db.transaction(DB_DELETED_STORE, "readwrite");
-        deletedTx.objectStore(DB_DELETED_STORE).put({
+        tx.objectStore(DB_DELETED_STORE).put({
           key: targetKey,
           deletedAt: Date.now(),
         } satisfies DeletedInvoiceMarker);
-        await txDone(deletedTx);
       }
+      await txDone(tx);
     } finally {
       db.close();
     }
