@@ -3,8 +3,9 @@ export const SAVED_LIST_KEY = "invoice-saved-list-v1";
 export const LOAD_PENDING_KEY = "invoice-load-pending-v1";
 
 const DB_NAME = "invoice-generator-saved-db";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const DB_STORE = "savedInvoices";
+const DB_DELETED_STORE = "deletedInvoices";
 const SIXTY_YEARS_MS = 60 * 365 * 24 * 60 * 60 * 1000;
 
 export type SavedInvoice = {
@@ -16,6 +17,11 @@ export type SavedInvoice = {
   total: number;
   currencySymbol: string;
   snapshot: unknown;
+};
+
+type DeletedInvoiceMarker = {
+  key: string;
+  deletedAt: number;
 };
 
 // Effectively unlimited capacity — keep up to 10,000 invoices locally.
@@ -51,12 +57,19 @@ function sameInvoice(a: SavedInvoice, b: SavedInvoice): boolean {
   return a.id === b.id;
 }
 
+function invoiceKey(id: string, invoiceNumber?: string): string {
+  const trimmed = invoiceNumber?.trim();
+  return trimmed ? `number:${trimmed}` : `id:${id}`;
+}
+
+function getEntryKey(entry: SavedInvoice): string {
+  return invoiceKey(entry.id, entry.invoiceNumber);
+}
+
 function mergeInvoiceLists(list: SavedInvoice[]): SavedInvoice[] {
   const map = new Map<string, SavedInvoice>();
   for (const item of list) {
-    const key = item.invoiceNumber?.trim()
-      ? `number:${item.invoiceNumber.trim()}`
-      : `id:${item.id}`;
+    const key = getEntryKey(item);
     const existing = map.get(key);
     if (!existing || (item.savedAt || 0) > (existing.savedAt || 0)) {
       map.set(key, withRetention(item));
@@ -112,8 +125,9 @@ export function saveInvoiceSnapshot(entry: SavedInvoice): SavedInvoice {
   throw new Error("Unable to save invoice because browser storage is full.");
 }
 
-export function deleteSavedInvoice(id: string) {
-  const list = getSavedInvoices().filter((i) => i.id !== id);
+export function deleteSavedInvoice(id: string, invoiceNumber?: string) {
+  const targetKey = invoiceKey(id, invoiceNumber);
+  const list = getSavedInvoices().filter((i) => i.id !== id && getEntryKey(i) !== targetKey);
   localStorage.setItem(SAVED_LIST_KEY, JSON.stringify(list));
 }
 
@@ -130,9 +144,24 @@ function openDb(): Promise<IDBDatabase> {
       if (!db.objectStoreNames.contains(DB_STORE)) {
         db.createObjectStore(DB_STORE, { keyPath: "id" });
       }
+      if (!db.objectStoreNames.contains(DB_DELETED_STORE)) {
+        db.createObjectStore(DB_DELETED_STORE, { keyPath: "key" });
+      }
     };
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error ?? new Error("Could not open invoice DB"));
+  });
+}
+
+function getDeletedMarkers(db: IDBDatabase): Promise<DeletedInvoiceMarker[]> {
+  if (!db.objectStoreNames.contains(DB_DELETED_STORE)) return Promise.resolve([]);
+
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(DB_DELETED_STORE, "readonly");
+    const store = tx.objectStore(DB_DELETED_STORE);
+    const request = store.getAll();
+    request.onsuccess = () => resolve(Array.isArray(request.result) ? request.result : []);
+    request.onerror = () => reject(request.error ?? new Error("Could not read deleted invoices"));
   });
 }
 
@@ -179,7 +208,10 @@ export async function getSavedInvoicesAsync(): Promise<SavedInvoice[]> {
     const db = await openDb();
     try {
       const dbList = await getAllFromDb(db);
-      const merged = mergeInvoiceLists([...dbList, ...localList]);
+      const deletedKeys = new Set((await getDeletedMarkers(db)).map((item) => item.key));
+      const merged = mergeInvoiceLists([...dbList, ...localList]).filter(
+        (item) => !deletedKeys.has(getEntryKey(item)),
+      );
 
       // Migrate older localStorage saves into IndexedDB so they do not disappear.
       if (localList.length > 0 || merged.length !== dbList.length) {
@@ -251,12 +283,28 @@ export async function saveInvoiceSnapshotAsync(entry: SavedInvoice): Promise<Sav
 }
 
 export async function deleteSavedInvoiceAsync(id: string) {
+  let invoiceNumber: string | undefined;
   try {
     const db = await openDb();
     try {
+      const existing = await getAllFromDb(db);
+      invoiceNumber = existing.find((item) => item.id === id)?.invoiceNumber;
+      const targetKey = invoiceKey(id, invoiceNumber);
       const tx = db.transaction(DB_STORE, "readwrite");
-      tx.objectStore(DB_STORE).delete(id);
+      const store = tx.objectStore(DB_STORE);
+      existing
+        .filter((item) => item.id === id || getEntryKey(item) === targetKey)
+        .forEach((item) => store.delete(item.id));
       await txDone(tx);
+
+      if (db.objectStoreNames.contains(DB_DELETED_STORE)) {
+        const deletedTx = db.transaction(DB_DELETED_STORE, "readwrite");
+        deletedTx.objectStore(DB_DELETED_STORE).put({
+          key: targetKey,
+          deletedAt: Date.now(),
+        } satisfies DeletedInvoiceMarker);
+        await txDone(deletedTx);
+      }
     } finally {
       db.close();
     }
@@ -264,6 +312,6 @@ export async function deleteSavedInvoiceAsync(id: string) {
     // localStorage cleanup below still runs.
   }
 
-  deleteSavedInvoice(id);
+  deleteSavedInvoice(id, invoiceNumber);
 }
 

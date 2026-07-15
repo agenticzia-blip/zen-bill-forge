@@ -53,7 +53,7 @@ export const SAMPLES: InvoiceSample[] = [
       { description: "Personalization Credits", quantity: "1", rate: "10" },
     ],
     notes:
-      "Total Monthly Investment $268.50\nExpected Return $9,000 - $15,000\nEstimated ROI 3,252% - 5,487%\nTime to Results 65 Days\nMailboxes & verification tools billed monthly at cost.",
+      "{{firstName}} thanks for partnering with us!\n\nTotal Monthly Investment $268.50\nExpected Return $9,000 - $15,000\nEstimated ROI 3,252% - 5,487%\nTime to Results 65 Days\nMailboxes & verification tools billed monthly at cost.",
     amountPaid: 268.5,
     scheduledPayment: 0,
   },
