@@ -81,8 +81,8 @@ const DEFAULT_LABELS: Record<string, string> = {
   quantity: "Qty",
   rate: "Rate",
   amount: "Amount",
-  notes: "Notes",
-  terms: "Terms",
+  notes: "Description",
+  terms: "Notes",
   subtotal: "Subtotal",
   tax: "Tax (%)",
   discount: "Discount",
@@ -283,12 +283,39 @@ export default function InvoiceGenerator() {
     reader.readAsDataURL(file);
   };
 
+  const prepareForExport = () => {
+    if (!invoiceRef.current) return () => {};
+    const restore: (() => void)[] = [];
+    const hide = (selector: string) => {
+      const el = invoiceRef.current!.querySelector<HTMLElement>(selector);
+      if (!el) return;
+      const prev = el.style.display;
+      el.style.display = "none";
+      restore.push(() => {
+        el.style.display = prev;
+      });
+    };
+    if (!state.shipTo.trim()) hide('[data-export="shipTo"]');
+    if (!state.paymentTerms.trim()) hide('[data-export="paymentTerms"]');
+    if (!state.dueDate) hide('[data-export="dueDate"]');
+    if (!state.poNumber.trim()) hide('[data-export="poNumber"]');
+    if (!personalizedNotes.trim()) hide('[data-export="notes"]');
+    if (!state.terms.trim()) hide('[data-export="terms"]');
+    if (!Number(state.scheduledPayment) && !state.scheduledDate)
+      hide('[data-export="scheduled"]');
+    if (!Number(state.taxRate)) hide('[data-export="tax"]');
+    if (!Number(state.discount)) hide('[data-export="discount"]');
+    if (!Number(state.shipping)) hide('[data-export="shipping"]');
+    if (!Number(state.amountPaid)) hide('[data-export="amountPaid"]');
+    return () => restore.forEach((f) => f());
+  };
+
   const downloadPDF = async () => {
     if (!invoiceRef.current) return;
     toast.loading("Generating PDF...", { id: "pdf" });
     let saved = false;
+    let restore: () => void = () => {};
     try {
-      // Save first so the editable invoice is kept even if the browser blocks/fails the PDF file write.
       try {
         await saveInvoiceSnapshotAsync(buildSavedEntry());
         saved = true;
@@ -296,6 +323,7 @@ export default function InvoiceGenerator() {
         console.warn("Could not save invoice snapshot:", saveErr);
       }
 
+      restore = prepareForExport();
       const node = invoiceRef.current;
       const dataUrl = await toJpeg(node, {
         pixelRatio: 1.5,
@@ -323,6 +351,8 @@ export default function InvoiceGenerator() {
     } catch (e) {
       console.error("PDF error:", e);
       toast.error("Failed to generate PDF", { id: "pdf" });
+    } finally {
+      restore();
     }
   };
 
@@ -545,7 +575,7 @@ export default function InvoiceGenerator() {
                 className="mt-2 rounded-lg resize-none"
               />
             </div>
-            <div>
+            <div data-export="shipTo">
               <EditableText
                 value={state.labels.shipTo}
                 onChange={(v) => updateLabel("shipTo", v)}
@@ -576,6 +606,7 @@ export default function InvoiceGenerator() {
             <FieldRow
               label={state.labels.paymentTerms}
               onLabelChange={(v) => updateLabel("paymentTerms", v)}
+              dataExport="paymentTerms"
             >
               <Input
                 value={state.paymentTerms}
@@ -587,6 +618,7 @@ export default function InvoiceGenerator() {
             <FieldRow
               label={state.labels.dueDate}
               onLabelChange={(v) => updateLabel("dueDate", v)}
+              dataExport="dueDate"
             >
               <Input
                 type="date"
@@ -598,6 +630,7 @@ export default function InvoiceGenerator() {
             <FieldRow
               label={state.labels.poNumber}
               onLabelChange={(v) => updateLabel("poNumber", v)}
+              dataExport="poNumber"
             >
               <Input
                 value={state.poNumber}
@@ -709,7 +742,7 @@ export default function InvoiceGenerator() {
           {/* Totals */}
           <div className="mt-8 grid grid-cols-1 gap-8 md:grid-cols-2">
             <div className="space-y-4">
-              <div>
+              <div data-export="notes">
                 <EditableText
                   value={state.labels.notes}
                   onChange={(v) => updateLabel("notes", v)}
@@ -718,12 +751,12 @@ export default function InvoiceGenerator() {
                 <Textarea
                   value={personalizedNotes}
                   onChange={(e) => update("notes", e.target.value)}
-                  placeholder="Notes — any relevant information not already covered"
+                  placeholder="Description — any relevant information not already covered"
                   rows={3}
                   className="mt-2 rounded-lg"
                 />
               </div>
-              <div>
+              <div data-export="terms">
                 <EditableText
                   value={state.labels.terms}
                   onChange={(v) => updateLabel("terms", v)}
@@ -732,7 +765,7 @@ export default function InvoiceGenerator() {
                 <Textarea
                   value={state.terms}
                   onChange={(e) => update("terms", e.target.value)}
-                  placeholder="Terms and conditions — late fees, payment methods, delivery..."
+                  placeholder="Notes — late fees, payment methods, delivery..."
                   rows={3}
                   className="mt-2 rounded-lg"
                 />
@@ -748,6 +781,7 @@ export default function InvoiceGenerator() {
               <TotalRow
                 label={state.labels.tax}
                 onLabelChange={(v) => updateLabel("tax", v)}
+                dataExport="tax"
                 value={
                   <Input
                     type="number"
@@ -760,6 +794,7 @@ export default function InvoiceGenerator() {
               <TotalRow
                 label={state.labels.discount}
                 onLabelChange={(v) => updateLabel("discount", v)}
+                dataExport="discount"
                 value={
                   <Input
                     type="number"
@@ -772,6 +807,7 @@ export default function InvoiceGenerator() {
               <TotalRow
                 label={state.labels.shipping}
                 onLabelChange={(v) => updateLabel("shipping", v)}
+                dataExport="shipping"
                 value={
                   <Input
                     type="number"
@@ -791,6 +827,7 @@ export default function InvoiceGenerator() {
               <TotalRow
                 label={state.labels.amountPaid}
                 onLabelChange={(v) => updateLabel("amountPaid", v)}
+                dataExport="amountPaid"
                 value={
                   <Input
                     type="number"
@@ -810,7 +847,7 @@ export default function InvoiceGenerator() {
               </div>
 
               {/* Scheduled Payment */}
-              <div className="mt-4 rounded-lg border bg-background p-4">
+              <div className="mt-4 rounded-lg border bg-background p-4" data-export="scheduled">
                 <EditableText
                   value={state.labels.scheduledPayment}
                   onChange={(v) => updateLabel("scheduledPayment", v)}
@@ -913,13 +950,15 @@ function FieldRow({
   label,
   onLabelChange,
   children,
+  dataExport,
 }: {
   label: string;
   onLabelChange?: (v: string) => void;
   children: React.ReactNode;
+  dataExport?: string;
 }) {
   return (
-    <div>
+    <div data-export={dataExport}>
       {onLabelChange ? (
         <EditableText
           value={label}
@@ -941,11 +980,13 @@ function TotalRow({
   onLabelChange,
   value,
   bold,
+  dataExport,
 }: {
   label: string;
   onLabelChange?: (v: string) => void;
   value: React.ReactNode;
   bold?: boolean;
+  dataExport?: string;
 }) {
   const labelEl = onLabelChange ? (
     <EditableText
@@ -961,7 +1002,7 @@ function TotalRow({
     </span>
   );
   return (
-    <div className="flex items-center justify-between gap-4">
+    <div className="flex items-center justify-between gap-4" data-export={dataExport}>
       {labelEl}
       {typeof value === "string" ? (
         <span className={`tabular-nums ${bold ? "text-lg font-bold" : "text-sm"}`}>
