@@ -575,7 +575,7 @@ export default function InvoiceGenerator() {
                 className="mt-2 rounded-lg resize-none"
               />
             </div>
-            <div>
+            <div data-export="shipTo">
               <EditableText
                 value={state.labels.shipTo}
                 onChange={(v) => updateLabel("shipTo", v)}
