@@ -781,6 +781,7 @@ export default function InvoiceGenerator() {
               <TotalRow
                 label={state.labels.tax}
                 onLabelChange={(v) => updateLabel("tax", v)}
+                dataExport="tax"
                 value={
                   <Input
                     type="number"
@@ -793,6 +794,7 @@ export default function InvoiceGenerator() {
               <TotalRow
                 label={state.labels.discount}
                 onLabelChange={(v) => updateLabel("discount", v)}
+                dataExport="discount"
                 value={
                   <Input
                     type="number"
@@ -805,6 +807,7 @@ export default function InvoiceGenerator() {
               <TotalRow
                 label={state.labels.shipping}
                 onLabelChange={(v) => updateLabel("shipping", v)}
+                dataExport="shipping"
                 value={
                   <Input
                     type="number"
@@ -824,6 +827,7 @@ export default function InvoiceGenerator() {
               <TotalRow
                 label={state.labels.amountPaid}
                 onLabelChange={(v) => updateLabel("amountPaid", v)}
+                dataExport="amountPaid"
                 value={
                   <Input
                     type="number"
