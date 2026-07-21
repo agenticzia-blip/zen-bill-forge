@@ -847,7 +847,7 @@ export default function InvoiceGenerator() {
               </div>
 
               {/* Scheduled Payment */}
-              <div className="mt-4 rounded-lg border bg-background p-4">
+              <div className="mt-4 rounded-lg border bg-background p-4" data-export="scheduled">
                 <EditableText
                   value={state.labels.scheduledPayment}
                   onChange={(v) => updateLabel("scheduledPayment", v)}
