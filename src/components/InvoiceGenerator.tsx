@@ -606,6 +606,7 @@ export default function InvoiceGenerator() {
             <FieldRow
               label={state.labels.paymentTerms}
               onLabelChange={(v) => updateLabel("paymentTerms", v)}
+              dataExport="paymentTerms"
             >
               <Input
                 value={state.paymentTerms}
@@ -617,6 +618,7 @@ export default function InvoiceGenerator() {
             <FieldRow
               label={state.labels.dueDate}
               onLabelChange={(v) => updateLabel("dueDate", v)}
+              dataExport="dueDate"
             >
               <Input
                 type="date"
@@ -628,6 +630,7 @@ export default function InvoiceGenerator() {
             <FieldRow
               label={state.labels.poNumber}
               onLabelChange={(v) => updateLabel("poNumber", v)}
+              dataExport="poNumber"
             >
               <Input
                 value={state.poNumber}
