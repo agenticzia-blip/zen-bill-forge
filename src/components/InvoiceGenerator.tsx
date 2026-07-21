@@ -973,11 +973,13 @@ function TotalRow({
   onLabelChange,
   value,
   bold,
+  dataExport,
 }: {
   label: string;
   onLabelChange?: (v: string) => void;
   value: React.ReactNode;
   bold?: boolean;
+  dataExport?: string;
 }) {
   const labelEl = onLabelChange ? (
     <EditableText
@@ -993,7 +995,7 @@ function TotalRow({
     </span>
   );
   return (
-    <div className="flex items-center justify-between gap-4">
+    <div className="flex items-center justify-between gap-4" data-export={dataExport}>
       {labelEl}
       {typeof value === "string" ? (
         <span className={`tabular-nums ${bold ? "text-lg font-bold" : "text-sm"}`}>
