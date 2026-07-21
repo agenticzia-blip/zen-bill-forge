@@ -283,12 +283,39 @@ export default function InvoiceGenerator() {
     reader.readAsDataURL(file);
   };
 
+  const prepareForExport = () => {
+    if (!invoiceRef.current) return () => {};
+    const restore: (() => void)[] = [];
+    const hide = (selector: string) => {
+      const el = invoiceRef.current!.querySelector<HTMLElement>(selector);
+      if (!el) return;
+      const prev = el.style.display;
+      el.style.display = "none";
+      restore.push(() => {
+        el.style.display = prev;
+      });
+    };
+    if (!state.shipTo.trim()) hide('[data-export="shipTo"]');
+    if (!state.paymentTerms.trim()) hide('[data-export="paymentTerms"]');
+    if (!state.dueDate) hide('[data-export="dueDate"]');
+    if (!state.poNumber.trim()) hide('[data-export="poNumber"]');
+    if (!personalizedNotes.trim()) hide('[data-export="notes"]');
+    if (!state.terms.trim()) hide('[data-export="terms"]');
+    if (!Number(state.scheduledPayment) && !state.scheduledDate)
+      hide('[data-export="scheduled"]');
+    if (!Number(state.taxRate)) hide('[data-export="tax"]');
+    if (!Number(state.discount)) hide('[data-export="discount"]');
+    if (!Number(state.shipping)) hide('[data-export="shipping"]');
+    if (!Number(state.amountPaid)) hide('[data-export="amountPaid"]');
+    return () => restore.forEach((f) => f());
+  };
+
   const downloadPDF = async () => {
     if (!invoiceRef.current) return;
     toast.loading("Generating PDF...", { id: "pdf" });
     let saved = false;
+    let restore: () => void = () => {};
     try {
-      // Save first so the editable invoice is kept even if the browser blocks/fails the PDF file write.
       try {
         await saveInvoiceSnapshotAsync(buildSavedEntry());
         saved = true;
@@ -296,6 +323,7 @@ export default function InvoiceGenerator() {
         console.warn("Could not save invoice snapshot:", saveErr);
       }
 
+      restore = prepareForExport();
       const node = invoiceRef.current;
       const dataUrl = await toJpeg(node, {
         pixelRatio: 1.5,
@@ -323,6 +351,8 @@ export default function InvoiceGenerator() {
     } catch (e) {
       console.error("PDF error:", e);
       toast.error("Failed to generate PDF", { id: "pdf" });
+    } finally {
+      restore();
     }
   };
 
