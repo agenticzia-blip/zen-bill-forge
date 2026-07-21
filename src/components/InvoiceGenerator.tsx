@@ -943,13 +943,15 @@ function FieldRow({
   label,
   onLabelChange,
   children,
+  dataExport,
 }: {
   label: string;
   onLabelChange?: (v: string) => void;
   children: React.ReactNode;
+  dataExport?: string;
 }) {
   return (
-    <div>
+    <div data-export={dataExport}>
       {onLabelChange ? (
         <EditableText
           value={label}
