@@ -742,7 +742,7 @@ export default function InvoiceGenerator() {
           {/* Totals */}
           <div className="mt-8 grid grid-cols-1 gap-8 md:grid-cols-2">
             <div className="space-y-4">
-              <div>
+              <div data-export="notes">
                 <EditableText
                   value={state.labels.notes}
                   onChange={(v) => updateLabel("notes", v)}
@@ -751,12 +751,12 @@ export default function InvoiceGenerator() {
                 <Textarea
                   value={personalizedNotes}
                   onChange={(e) => update("notes", e.target.value)}
-                  placeholder="Notes — any relevant information not already covered"
+                  placeholder="Description — any relevant information not already covered"
                   rows={3}
                   className="mt-2 rounded-lg"
                 />
               </div>
-              <div>
+              <div data-export="terms">
                 <EditableText
                   value={state.labels.terms}
                   onChange={(v) => updateLabel("terms", v)}
@@ -765,7 +765,7 @@ export default function InvoiceGenerator() {
                 <Textarea
                   value={state.terms}
                   onChange={(e) => update("terms", e.target.value)}
-                  placeholder="Terms and conditions — late fees, payment methods, delivery..."
+                  placeholder="Notes — late fees, payment methods, delivery..."
                   rows={3}
                   className="mt-2 rounded-lg"
                 />
