@@ -42,6 +42,7 @@ export const SAMPLES: InvoiceSample[] = [
       { description: "1 month of post-launch support", quantity: "1", rate: "80" },
     ],
     notes: "Includes 2 revision rounds. Hosting billed separately.",
+    terms: "",
     amountPaid: 700,
     scheduledPayment: 750,
   },
