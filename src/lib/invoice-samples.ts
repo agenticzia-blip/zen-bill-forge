@@ -14,9 +14,15 @@ export type InvoiceSample = {
   product: string;
   items: SampleItem[];
   notes: string;
+  terms: string;
   amountPaid: number;
   scheduledPayment: number;
   timeline: string;
+  currency?: string;
+  date?: string;
+  dueDate?: string;
+  paymentTerms?: string;
+  billTo?: string;
 };
 
 const FROM = "Ziauddin Shah\nAppoint Funnels\nhello@appointfunnels.com";
