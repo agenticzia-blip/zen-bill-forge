@@ -61,7 +61,27 @@ export const SAMPLES: InvoiceSample[] = [
     ],
     notes:
       "Complete cold outreach infrastructure setup designed to reach decision-makers and book meetings and close clients.\n\n{{firstName}} thanks for partnering with us!\n\nTotal Monthly Investment $268.50\nExpected Return $9,000 - $15,000\nEstimated ROI 3,252% - 5,487%\nTime to Results 65 Days\nMailboxes & verification tools billed monthly at cost.",
+    terms: "",
     amountPaid: 268.5,
+    scheduledPayment: 0,
+  },
+  {
+    id: "appointrium-academy",
+    title: "Appointrium Academy",
+    tagline: "Elite plan for Appointrium Academy clients.",
+    product: "Elite Plan",
+    timeline: "45",
+    currency: "PKR",
+    date: "2026-08-01",
+    dueDate: "2026-08-01",
+    paymentTerms: "45 Days",
+    billTo: "Musab Ali",
+    items: [
+      { description: "Appointrium Elite Package", quantity: "1", rate: "12000" },
+    ],
+    notes: "Welcome To Appointrium Academy",
+    terms: "First Client Guaranteed Within 45 Days",
+    amountPaid: 0,
     scheduledPayment: 0,
   },
 ];
