@@ -385,20 +385,22 @@ export default function InvoiceGenerator() {
   const loadSample = (sample: InvoiceSample) => {
     setState((s) => ({
       ...defaultState(),
-      // preserve logo, theme & currency the user already set
+      // preserve logo, theme the user already set; use sample currency if provided
       logo: s.logo,
       logoPalette: s.logoPalette,
       themeColor: s.themeColor,
-      currency: s.currency,
+      currency: sample.currency ?? s.currency,
       invoiceNumber: `INV-${Date.now().toString().slice(-6)}`,
       from: SAMPLE_FROM,
-      billTo: "",
+      billTo: sample.billTo ?? "",
       shipTo: "",
-      date: today(),
-      paymentTerms: `Net ${sample.timeline}`,
+      date: sample.date ?? today(),
+      paymentTerms: sample.paymentTerms ?? `Net ${sample.timeline}`,
+      dueDate: sample.dueDate ?? "",
       poNumber: sample.product,
       items: sample.items.map((it) => ({ id: crypto.randomUUID(), ...it })),
       notes: sample.notes,
+      terms: sample.terms ?? "",
       amountPaid: sample.amountPaid,
       scheduledPayment: sample.scheduledPayment,
     }));
