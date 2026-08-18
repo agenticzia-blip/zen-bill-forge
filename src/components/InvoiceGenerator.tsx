@@ -1,6 +1,18 @@
 import { useEffect, useRef, useState } from "react";
-import { Plus, Trash2, Download, Printer, Upload, Save, FolderOpen } from "lucide-react";
+import {
+  Plus,
+  Trash2,
+  Download,
+  Printer,
+  Upload,
+  Save,
+  FolderOpen,
+  Sparkles,
+  Loader2,
+} from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
+import { parseProposalToInvoice } from "@/lib/ai-invoice.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -133,6 +145,9 @@ export default function InvoiceGenerator() {
   const [hydrated, setHydrated] = useState(false);
   const invoiceRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+  const [aiText, setAiText] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
+  const runAi = useServerFn(parseProposalToInvoice);
 
   useEffect(() => {
     try {
@@ -407,6 +422,55 @@ export default function InvoiceGenerator() {
     }
   };
 
+  const str = (v: unknown) => (typeof v === "string" ? v : v == null ? "" : String(v));
+
+  const generateWithAI = async () => {
+    if (!aiText.trim()) {
+      toast.error("Paste your proposal or pricing first");
+      return;
+    }
+    setAiLoading(true);
+    toast.loading("Reading your proposal...", { id: "ai" });
+    try {
+      const r = (await runAi({ data: { text: aiText } })) as Record<string, unknown>;
+      setState((s) => {
+        const items = Array.isArray(r.items)
+          ? (r.items as Record<string, unknown>[]).map((it) => ({
+              id: crypto.randomUUID(),
+              description: str(it.description),
+              quantity: str(it.quantity),
+              rate: str(it.rate).replace(/[^\d.\-]/g, ""),
+            }))
+          : s.items;
+        const pick = (k: string, cur: string) => (str(r[k]) ? str(r[k]) : cur);
+        return {
+          ...s,
+          billTo: pick("billTo", s.billTo),
+          from: pick("from", s.from),
+          poNumber: pick("poNumber", s.poNumber),
+          paymentTerms: pick("paymentTerms", s.paymentTerms),
+          currency: CURRENCIES.some((c) => c.code === str(r.currency))
+            ? str(r.currency)
+            : s.currency,
+          items: items.length ? items : s.items,
+          notes: pick("notes", s.notes),
+          terms: pick("terms", s.terms),
+          taxRate: pick("taxRate", s.taxRate),
+          discount: pick("discount", s.discount),
+          shipping: pick("shipping", s.shipping),
+          amountPaid: pick("amountPaid", s.amountPaid),
+          scheduledPayment: pick("scheduledPayment", s.scheduledPayment),
+        };
+      });
+      toast.success("Invoice filled from your text", { id: "ai" });
+    } catch (e) {
+      console.error("AI error:", e);
+      toast.error(e instanceof Error ? e.message : "AI failed", { id: "ai" });
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
   const loadSample = (sample: InvoiceSample) => {
     setState((s) => ({
       ...defaultState(),
@@ -471,6 +535,34 @@ export default function InvoiceGenerator() {
             </Button>
             <Button onClick={downloadPDF} className="rounded-lg">
               <Download className="mr-2 h-4 w-4" /> Download PDF
+            </Button>
+          </div>
+        </div>
+
+        {/* AI Invoice Maker */}
+        <div className="mb-6 rounded-2xl border bg-card p-5 shadow-sm print:hidden">
+          <div className="mb-3 flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-primary" />
+            <h2 className="text-base font-semibold">AI Invoice Maker</h2>
+            <span className="text-xs text-muted-foreground">
+              Paste a proposal, pricing list or notes — it fills the invoice below.
+            </span>
+          </div>
+          <Textarea
+            value={aiText}
+            onChange={(e) => setAiText(e.target.value)}
+            rows={4}
+            placeholder={"e.g. Client: Musab Ali\nElite Plan — 12000 PKR\nPaid in 45 days, first client guaranteed"}
+            className="rounded-lg"
+          />
+          <div className="mt-3 flex justify-end">
+            <Button onClick={generateWithAI} disabled={aiLoading} className="rounded-lg">
+              {aiLoading ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Sparkles className="mr-2 h-4 w-4" />
+              )}
+              Generate invoice
             </Button>
           </div>
         </div>
