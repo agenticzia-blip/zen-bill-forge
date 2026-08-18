@@ -1,6 +1,18 @@
 import { useEffect, useRef, useState } from "react";
-import { Plus, Trash2, Download, Printer, Upload, Save, FolderOpen } from "lucide-react";
+import {
+  Plus,
+  Trash2,
+  Download,
+  Printer,
+  Upload,
+  Save,
+  FolderOpen,
+  Sparkles,
+  Loader2,
+} from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
+import { parseProposalToInvoice } from "@/lib/ai-invoice.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -51,11 +63,11 @@ type InvoiceState = {
   dueDate: string;
   poNumber: string;
   items: LineItem[];
-  taxRate: number;
-  discount: number;
-  shipping: number;
-  amountPaid: number;
-  scheduledPayment: number;
+  taxRate: string;
+  discount: string;
+  shipping: string;
+  amountPaid: string;
+  scheduledPayment: string;
   scheduledDate: string;
   notes: string;
   terms: string;
@@ -114,11 +126,11 @@ const defaultState = (): InvoiceState => ({
   dueDate: "",
   poNumber: "",
   items: [newItem()],
-  taxRate: 0,
-  discount: 0,
-  shipping: 0,
-  amountPaid: 0,
-  scheduledPayment: 0,
+  taxRate: "",
+  discount: "",
+  shipping: "",
+  amountPaid: "",
+  scheduledPayment: "",
   scheduledDate: "",
   notes: "",
   terms: "",
@@ -133,6 +145,9 @@ export default function InvoiceGenerator() {
   const [hydrated, setHydrated] = useState(false);
   const invoiceRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+  const [aiText, setAiText] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
+  const runAi = useServerFn(parseProposalToInvoice);
 
   useEffect(() => {
     try {
@@ -191,10 +206,9 @@ export default function InvoiceGenerator() {
     return m ? Number(m[0]) : 0;
   };
   const subtotal = state.items.reduce((s, i) => s + parseNum(i.rate), 0);
-  const taxAmount = subtotal * ((Number(state.taxRate) || 0) / 100);
-  const total =
-    subtotal + taxAmount - (Number(state.discount) || 0) + (Number(state.shipping) || 0);
-  const balanceDue = total - (Number(state.amountPaid) || 0);
+  const taxAmount = subtotal * (parseNum(state.taxRate) / 100);
+  const total = subtotal + taxAmount - parseNum(state.discount) + parseNum(state.shipping);
+  const balanceDue = total - parseNum(state.amountPaid);
 
   // Derive an invoice "name" automatically — client company / name first line,
   // falling back to your own business, then the invoice number.
@@ -301,12 +315,38 @@ export default function InvoiceGenerator() {
     if (!state.poNumber.trim()) hide('[data-export="poNumber"]');
     if (!personalizedNotes.trim()) hide('[data-export="notes"]');
     if (!state.terms.trim()) hide('[data-export="terms"]');
-    if (!Number(state.scheduledPayment) && !state.scheduledDate)
+    if (!String(state.scheduledPayment).trim() && !state.scheduledDate)
       hide('[data-export="scheduled"]');
-    if (!Number(state.taxRate)) hide('[data-export="tax"]');
-    if (!Number(state.discount)) hide('[data-export="discount"]');
-    if (!Number(state.shipping)) hide('[data-export="shipping"]');
-    if (!Number(state.amountPaid)) hide('[data-export="amountPaid"]');
+    if (!String(state.taxRate).trim()) hide('[data-export="tax"]');
+    if (!String(state.discount).trim()) hide('[data-export="discount"]');
+    if (!String(state.shipping).trim()) hide('[data-export="shipping"]');
+    if (!String(state.amountPaid).trim()) hide('[data-export="amountPaid"]');
+    if (!state.from.trim()) hide('[data-export="from"]');
+    if (!state.billTo.trim()) hide('[data-export="billTo"]');
+    if (!state.invoiceNumber.trim()) hide('[data-export="invoiceNumber"]');
+    if (!state.date) hide('[data-export="date"]');
+
+    // Flatten remaining inputs into plain text so the PDF has no blank rectangles
+    const root = invoiceRef.current;
+    root.classList.add("exporting");
+    restore.push(() => root.classList.remove("exporting"));
+    root
+      .querySelectorAll<HTMLInputElement | HTMLTextAreaElement>("input, textarea")
+      .forEach((el) => {
+        if (el.type === "file") return;
+        if (!el.value.trim()) {
+          const prev = el.style.visibility;
+          el.style.visibility = "hidden";
+          restore.push(() => {
+            el.style.visibility = prev;
+          });
+        }
+      });
+    // Drop empty line item rows entirely
+    state.items.forEach((it, idx) => {
+      if (!it.description.trim() && !it.quantity.trim() && !it.rate.trim())
+        hide(`[data-item-index="${idx}"]`);
+    });
     return () => restore.forEach((f) => f());
   };
 
@@ -382,6 +422,56 @@ export default function InvoiceGenerator() {
     }
   };
 
+  const str = (v: unknown) => (typeof v === "string" ? v : v == null ? "" : String(v));
+
+  const generateWithAI = async () => {
+    if (!aiText.trim()) {
+      toast.error("Paste your proposal or pricing first");
+      return;
+    }
+    setAiLoading(true);
+    toast.loading("Reading your proposal...", { id: "ai" });
+    try {
+      const r = await runAi({ data: { text: aiText } });
+      setState((s) => {
+        const items = Array.isArray(r.items)
+          ? r.items.map((it) => ({
+              id: crypto.randomUUID(),
+              description: str(it.description),
+              quantity: str(it.quantity),
+              rate: str(it.rate).replace(/[^\d.\-]/g, ""),
+            }))
+          : s.items;
+        const pick = (k: keyof typeof r, cur: string) =>
+          str(r[k]) ? str(r[k]) : cur;
+        return {
+          ...s,
+          billTo: pick("billTo", s.billTo),
+          from: pick("from", s.from),
+          poNumber: pick("poNumber", s.poNumber),
+          paymentTerms: pick("paymentTerms", s.paymentTerms),
+          currency: CURRENCIES.some((c) => c.code === str(r.currency))
+            ? str(r.currency)
+            : s.currency,
+          items: items.length ? items : s.items,
+          notes: pick("notes", s.notes),
+          terms: pick("terms", s.terms),
+          taxRate: pick("taxRate", s.taxRate),
+          discount: pick("discount", s.discount),
+          shipping: pick("shipping", s.shipping),
+          amountPaid: pick("amountPaid", s.amountPaid),
+          scheduledPayment: pick("scheduledPayment", s.scheduledPayment),
+        };
+      });
+      toast.success("Invoice filled from your text", { id: "ai" });
+    } catch (e) {
+      console.error("AI error:", e);
+      toast.error(e instanceof Error ? e.message : "AI failed", { id: "ai" });
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
   const loadSample = (sample: InvoiceSample) => {
     setState((s) => ({
       ...defaultState(),
@@ -401,8 +491,8 @@ export default function InvoiceGenerator() {
       items: sample.items.map((it) => ({ id: crypto.randomUUID(), ...it })),
       notes: sample.notes,
       terms: sample.terms ?? "",
-      amountPaid: sample.amountPaid,
-      scheduledPayment: sample.scheduledPayment,
+      amountPaid: sample.amountPaid ? String(sample.amountPaid) : "",
+      scheduledPayment: sample.scheduledPayment ? String(sample.scheduledPayment) : "",
     }));
     toast.success(`Loaded sample: ${sample.title}`);
     if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
@@ -446,6 +536,34 @@ export default function InvoiceGenerator() {
             </Button>
             <Button onClick={downloadPDF} className="rounded-lg">
               <Download className="mr-2 h-4 w-4" /> Download PDF
+            </Button>
+          </div>
+        </div>
+
+        {/* AI Invoice Maker */}
+        <div className="mb-6 rounded-2xl border bg-card p-5 shadow-sm print:hidden">
+          <div className="mb-3 flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-primary" />
+            <h2 className="text-base font-semibold">AI Invoice Maker</h2>
+            <span className="text-xs text-muted-foreground">
+              Paste a proposal, pricing list or notes — it fills the invoice below.
+            </span>
+          </div>
+          <Textarea
+            value={aiText}
+            onChange={(e) => setAiText(e.target.value)}
+            rows={4}
+            placeholder={"e.g. Client: Musab Ali\nElite Plan — 12000 PKR\nPaid in 45 days, first client guaranteed"}
+            className="rounded-lg"
+          />
+          <div className="mt-3 flex justify-end">
+            <Button onClick={generateWithAI} disabled={aiLoading} className="rounded-lg">
+              {aiLoading ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Sparkles className="mr-2 h-4 w-4" />
+              )}
+              Generate invoice
             </Button>
           </div>
         </div>
@@ -532,7 +650,10 @@ export default function InvoiceGenerator() {
                 onChange={(v) => updateLabel("title", v)}
                 className="text-4xl font-bold tracking-tight text-primary"
               />
-              <div className="mt-3 flex items-center justify-end gap-2">
+              <div
+                className="mt-3 flex items-center justify-end gap-2"
+                data-export="invoiceNumber"
+              >
                 <EditableText
                   value={state.labels.numberPrefix}
                   onChange={(v) => updateLabel("numberPrefix", v)}
@@ -549,7 +670,7 @@ export default function InvoiceGenerator() {
 
           {/* Parties + Dates */}
           <div className="mt-10 grid grid-cols-1 gap-6 md:grid-cols-3">
-            <div>
+            <div data-export="from">
               <EditableText
                 value={state.labels.from}
                 onChange={(v) => updateLabel("from", v)}
@@ -563,7 +684,7 @@ export default function InvoiceGenerator() {
                 className="mt-2 rounded-lg resize-none"
               />
             </div>
-            <div>
+            <div data-export="billTo">
               <EditableText
                 value={state.labels.billTo}
                 onChange={(v) => updateLabel("billTo", v)}
@@ -597,6 +718,7 @@ export default function InvoiceGenerator() {
             <FieldRow
               label={state.labels.date}
               onLabelChange={(v) => updateLabel("date", v)}
+              dataExport="date"
             >
               <Input
                 type="date"
@@ -676,11 +798,12 @@ export default function InvoiceGenerator() {
               </div>
             </div>
             <div className="divide-y">
-              {state.items.map((item) => {
+              {state.items.map((item, idx) => {
                 const amount = parseNum(item.rate);
                 return (
                   <div
                     key={item.id}
+                    data-item-index={idx}
                     className="group grid grid-cols-12 items-center gap-2 px-4 py-3"
                   >
                     <div className="col-span-6">
@@ -786,9 +909,9 @@ export default function InvoiceGenerator() {
                 dataExport="tax"
                 value={
                   <Input
-                    type="number"
                     value={state.taxRate}
-                    onChange={(e) => update("taxRate", Number(e.target.value))}
+                    onChange={(e) => update("taxRate", e.target.value)}
+                    placeholder="—"
                     className="h-8 w-24 rounded-md text-right"
                   />
                 }
@@ -799,9 +922,9 @@ export default function InvoiceGenerator() {
                 dataExport="discount"
                 value={
                   <Input
-                    type="number"
                     value={state.discount}
-                    onChange={(e) => update("discount", Number(e.target.value))}
+                    onChange={(e) => update("discount", e.target.value)}
+                    placeholder="—"
                     className="h-8 w-28 rounded-md text-right"
                   />
                 }
@@ -812,9 +935,9 @@ export default function InvoiceGenerator() {
                 dataExport="shipping"
                 value={
                   <Input
-                    type="number"
                     value={state.shipping}
-                    onChange={(e) => update("shipping", Number(e.target.value))}
+                    onChange={(e) => update("shipping", e.target.value)}
+                    placeholder="—"
                     className="h-8 w-28 rounded-md text-right"
                   />
                 }
@@ -832,9 +955,9 @@ export default function InvoiceGenerator() {
                 dataExport="amountPaid"
                 value={
                   <Input
-                    type="number"
                     value={state.amountPaid}
-                    onChange={(e) => update("amountPaid", Number(e.target.value))}
+                    onChange={(e) => update("amountPaid", e.target.value)}
+                    placeholder="—"
                     className="h-8 w-28 rounded-md text-right"
                   />
                 }
@@ -857,12 +980,8 @@ export default function InvoiceGenerator() {
                 />
                 <div className="mt-2 grid grid-cols-2 gap-2">
                   <Input
-                    type="number"
-                    min={0}
                     value={state.scheduledPayment}
-                    onChange={(e) =>
-                      update("scheduledPayment", Number(e.target.value))
-                    }
+                    onChange={(e) => update("scheduledPayment", e.target.value)}
                     placeholder="Amount"
                     className="rounded-lg text-right"
                   />

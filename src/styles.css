@@ -142,3 +142,12 @@
     color: var(--color-foreground);
   }
 }
+
+/* PDF export mode: flatten form controls so nothing renders as a blank box */
+.exporting input,
+.exporting textarea {
+  border-color: transparent !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+  resize: none !important;
+}
