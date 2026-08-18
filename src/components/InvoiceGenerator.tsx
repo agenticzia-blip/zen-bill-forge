@@ -343,9 +343,9 @@ export default function InvoiceGenerator() {
         }
       });
     // Drop empty line item rows entirely
-    state.items.forEach((it) => {
+    state.items.forEach((it, idx) => {
       if (!it.description.trim() && !it.quantity.trim() && !it.rate.trim())
-        hide(`[data-item-id="${it.id}"]`);
+        hide(`[data-item-index="${idx}"]`);
     });
     return () => restore.forEach((f) => f());
   };
@@ -798,12 +798,12 @@ export default function InvoiceGenerator() {
               </div>
             </div>
             <div className="divide-y">
-              {state.items.map((item) => {
+              {state.items.map((item, idx) => {
                 const amount = parseNum(item.rate);
                 return (
                   <div
                     key={item.id}
-                    data-item-id={item.id}
+                    data-item-index={idx}
                     className="group grid grid-cols-12 items-center gap-2 px-4 py-3"
                   >
                     <div className="col-span-6">
