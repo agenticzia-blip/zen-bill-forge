@@ -5,6 +5,22 @@ const InputSchema = z.object({
   text: z.string().min(1).max(20000),
 });
 
+export type ParsedInvoice = {
+  billTo?: string;
+  from?: string;
+  poNumber?: string;
+  paymentTerms?: string;
+  currency?: string;
+  items?: { description?: string; quantity?: string; rate?: string }[];
+  notes?: string;
+  terms?: string;
+  taxRate?: string;
+  discount?: string;
+  shipping?: string;
+  amountPaid?: string;
+  scheduledPayment?: string;
+};
+
 const SYSTEM = `You turn messy proposal / pricing text into structured invoice data.
 Return ONLY JSON matching this shape (omit unknown fields, never invent prices):
 {
@@ -56,7 +72,8 @@ export const parseProposalToInvoice = createServerFn({ method: "POST" })
     const content = json.choices?.[0]?.message?.content ?? "{}";
     const cleaned = content.replace(/^```(?:json)?/i, "").replace(/```$/, "").trim();
     try {
-      return JSON.parse(cleaned) as Record<string, string | unknown[]>;
+      const parsed = JSON.parse(cleaned) as ParsedInvoice;
+      return parsed;
     } catch {
       throw new Error("Could not read the AI response");
     }

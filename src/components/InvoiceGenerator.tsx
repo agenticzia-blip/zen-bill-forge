@@ -432,17 +432,18 @@ export default function InvoiceGenerator() {
     setAiLoading(true);
     toast.loading("Reading your proposal...", { id: "ai" });
     try {
-      const r = (await runAi({ data: { text: aiText } })) as Record<string, unknown>;
+      const r = await runAi({ data: { text: aiText } });
       setState((s) => {
         const items = Array.isArray(r.items)
-          ? (r.items as Record<string, unknown>[]).map((it) => ({
+          ? r.items.map((it) => ({
               id: crypto.randomUUID(),
               description: str(it.description),
               quantity: str(it.quantity),
               rate: str(it.rate).replace(/[^\d.\-]/g, ""),
             }))
           : s.items;
-        const pick = (k: string, cur: string) => (str(r[k]) ? str(r[k]) : cur);
+        const pick = (k: keyof typeof r, cur: string) =>
+          str(r[k]) ? str(r[k]) : cur;
         return {
           ...s,
           billTo: pick("billTo", s.billTo),
