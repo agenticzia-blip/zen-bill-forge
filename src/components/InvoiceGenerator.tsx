@@ -51,11 +51,11 @@ type InvoiceState = {
   dueDate: string;
   poNumber: string;
   items: LineItem[];
-  taxRate: number;
-  discount: number;
-  shipping: number;
-  amountPaid: number;
-  scheduledPayment: number;
+  taxRate: string;
+  discount: string;
+  shipping: string;
+  amountPaid: string;
+  scheduledPayment: string;
   scheduledDate: string;
   notes: string;
   terms: string;
@@ -114,11 +114,11 @@ const defaultState = (): InvoiceState => ({
   dueDate: "",
   poNumber: "",
   items: [newItem()],
-  taxRate: 0,
-  discount: 0,
-  shipping: 0,
-  amountPaid: 0,
-  scheduledPayment: 0,
+  taxRate: "",
+  discount: "",
+  shipping: "",
+  amountPaid: "",
+  scheduledPayment: "",
   scheduledDate: "",
   notes: "",
   terms: "",
@@ -191,10 +191,9 @@ export default function InvoiceGenerator() {
     return m ? Number(m[0]) : 0;
   };
   const subtotal = state.items.reduce((s, i) => s + parseNum(i.rate), 0);
-  const taxAmount = subtotal * ((Number(state.taxRate) || 0) / 100);
-  const total =
-    subtotal + taxAmount - (Number(state.discount) || 0) + (Number(state.shipping) || 0);
-  const balanceDue = total - (Number(state.amountPaid) || 0);
+  const taxAmount = subtotal * (parseNum(state.taxRate) / 100);
+  const total = subtotal + taxAmount - parseNum(state.discount) + parseNum(state.shipping);
+  const balanceDue = total - parseNum(state.amountPaid);
 
   // Derive an invoice "name" automatically — client company / name first line,
   // falling back to your own business, then the invoice number.
@@ -301,12 +300,38 @@ export default function InvoiceGenerator() {
     if (!state.poNumber.trim()) hide('[data-export="poNumber"]');
     if (!personalizedNotes.trim()) hide('[data-export="notes"]');
     if (!state.terms.trim()) hide('[data-export="terms"]');
-    if (!Number(state.scheduledPayment) && !state.scheduledDate)
+    if (!String(state.scheduledPayment).trim() && !state.scheduledDate)
       hide('[data-export="scheduled"]');
-    if (!Number(state.taxRate)) hide('[data-export="tax"]');
-    if (!Number(state.discount)) hide('[data-export="discount"]');
-    if (!Number(state.shipping)) hide('[data-export="shipping"]');
-    if (!Number(state.amountPaid)) hide('[data-export="amountPaid"]');
+    if (!String(state.taxRate).trim()) hide('[data-export="tax"]');
+    if (!String(state.discount).trim()) hide('[data-export="discount"]');
+    if (!String(state.shipping).trim()) hide('[data-export="shipping"]');
+    if (!String(state.amountPaid).trim()) hide('[data-export="amountPaid"]');
+    if (!state.from.trim()) hide('[data-export="from"]');
+    if (!state.billTo.trim()) hide('[data-export="billTo"]');
+    if (!state.invoiceNumber.trim()) hide('[data-export="invoiceNumber"]');
+    if (!state.date) hide('[data-export="date"]');
+
+    // Flatten remaining inputs into plain text so the PDF has no blank rectangles
+    const root = invoiceRef.current;
+    root.classList.add("exporting");
+    restore.push(() => root.classList.remove("exporting"));
+    root
+      .querySelectorAll<HTMLInputElement | HTMLTextAreaElement>("input, textarea")
+      .forEach((el) => {
+        if (el.type === "file") return;
+        if (!el.value.trim()) {
+          const prev = el.style.visibility;
+          el.style.visibility = "hidden";
+          restore.push(() => {
+            el.style.visibility = prev;
+          });
+        }
+      });
+    // Drop empty line item rows entirely
+    state.items.forEach((it) => {
+      if (!it.description.trim() && !it.quantity.trim() && !it.rate.trim())
+        hide(`[data-item-id="${it.id}"]`);
+    });
     return () => restore.forEach((f) => f());
   };
 
@@ -401,8 +426,8 @@ export default function InvoiceGenerator() {
       items: sample.items.map((it) => ({ id: crypto.randomUUID(), ...it })),
       notes: sample.notes,
       terms: sample.terms ?? "",
-      amountPaid: sample.amountPaid,
-      scheduledPayment: sample.scheduledPayment,
+      amountPaid: sample.amountPaid ? String(sample.amountPaid) : "",
+      scheduledPayment: sample.scheduledPayment ? String(sample.scheduledPayment) : "",
     }));
     toast.success(`Loaded sample: ${sample.title}`);
     if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
@@ -532,7 +557,10 @@ export default function InvoiceGenerator() {
                 onChange={(v) => updateLabel("title", v)}
                 className="text-4xl font-bold tracking-tight text-primary"
               />
-              <div className="mt-3 flex items-center justify-end gap-2">
+              <div
+                className="mt-3 flex items-center justify-end gap-2"
+                data-export="invoiceNumber"
+              >
                 <EditableText
                   value={state.labels.numberPrefix}
                   onChange={(v) => updateLabel("numberPrefix", v)}
@@ -549,7 +577,7 @@ export default function InvoiceGenerator() {
 
           {/* Parties + Dates */}
           <div className="mt-10 grid grid-cols-1 gap-6 md:grid-cols-3">
-            <div>
+            <div data-export="from">
               <EditableText
                 value={state.labels.from}
                 onChange={(v) => updateLabel("from", v)}
@@ -563,7 +591,7 @@ export default function InvoiceGenerator() {
                 className="mt-2 rounded-lg resize-none"
               />
             </div>
-            <div>
+            <div data-export="billTo">
               <EditableText
                 value={state.labels.billTo}
                 onChange={(v) => updateLabel("billTo", v)}
@@ -597,6 +625,7 @@ export default function InvoiceGenerator() {
             <FieldRow
               label={state.labels.date}
               onLabelChange={(v) => updateLabel("date", v)}
+              dataExport="date"
             >
               <Input
                 type="date"
@@ -681,6 +710,7 @@ export default function InvoiceGenerator() {
                 return (
                   <div
                     key={item.id}
+                    data-item-id={item.id}
                     className="group grid grid-cols-12 items-center gap-2 px-4 py-3"
                   >
                     <div className="col-span-6">
@@ -786,9 +816,9 @@ export default function InvoiceGenerator() {
                 dataExport="tax"
                 value={
                   <Input
-                    type="number"
                     value={state.taxRate}
-                    onChange={(e) => update("taxRate", Number(e.target.value))}
+                    onChange={(e) => update("taxRate", e.target.value)}
+                    placeholder="—"
                     className="h-8 w-24 rounded-md text-right"
                   />
                 }
@@ -799,9 +829,9 @@ export default function InvoiceGenerator() {
                 dataExport="discount"
                 value={
                   <Input
-                    type="number"
                     value={state.discount}
-                    onChange={(e) => update("discount", Number(e.target.value))}
+                    onChange={(e) => update("discount", e.target.value)}
+                    placeholder="—"
                     className="h-8 w-28 rounded-md text-right"
                   />
                 }
@@ -812,9 +842,9 @@ export default function InvoiceGenerator() {
                 dataExport="shipping"
                 value={
                   <Input
-                    type="number"
                     value={state.shipping}
-                    onChange={(e) => update("shipping", Number(e.target.value))}
+                    onChange={(e) => update("shipping", e.target.value)}
+                    placeholder="—"
                     className="h-8 w-28 rounded-md text-right"
                   />
                 }
@@ -832,9 +862,9 @@ export default function InvoiceGenerator() {
                 dataExport="amountPaid"
                 value={
                   <Input
-                    type="number"
                     value={state.amountPaid}
-                    onChange={(e) => update("amountPaid", Number(e.target.value))}
+                    onChange={(e) => update("amountPaid", e.target.value)}
+                    placeholder="—"
                     className="h-8 w-28 rounded-md text-right"
                   />
                 }
@@ -857,12 +887,8 @@ export default function InvoiceGenerator() {
                 />
                 <div className="mt-2 grid grid-cols-2 gap-2">
                   <Input
-                    type="number"
-                    min={0}
                     value={state.scheduledPayment}
-                    onChange={(e) =>
-                      update("scheduledPayment", Number(e.target.value))
-                    }
+                    onChange={(e) => update("scheduledPayment", e.target.value)}
                     placeholder="Amount"
                     className="rounded-lg text-right"
                   />
