@@ -56,7 +56,7 @@ export const parseProposalToInvoice = createServerFn({ method: "POST" })
     const content = json.choices?.[0]?.message?.content ?? "{}";
     const cleaned = content.replace(/^```(?:json)?/i, "").replace(/```$/, "").trim();
     try {
-      return JSON.parse(cleaned) as Record<string, unknown>;
+      return JSON.parse(cleaned) as Record<string, string | unknown[]>;
     } catch {
       throw new Error("Could not read the AI response");
     }
