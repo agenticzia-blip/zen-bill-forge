@@ -84,6 +84,25 @@ export const SAMPLES: InvoiceSample[] = [
     amountPaid: 0,
     scheduledPayment: 0,
   },
+  {
+    id: "ai-cold-sms-system",
+    title: "AI Cold SMS System",
+    tagline: "Cold SMS outreach infrastructure — numbers, leads, platform and AI personalization.",
+    product: "AI Cold SMS System",
+    timeline: "30",
+    items: [
+      { description: "Dedicated SMS Numbers (10 @ $4.50)", quantity: "1", rate: "45" },
+      { description: "Leads Cost ($50 / 10k)", quantity: "1", rate: "90" },
+      { description: "SMS Platform Plan (Split)", quantity: "1", rate: "65" },
+      { description: "Number Verification & Carrier Lookup", quantity: "1", rate: "40" },
+      { description: "AI Personalization Credits", quantity: "1", rate: "15" },
+    ],
+    notes:
+      "Complete cold SMS outreach infrastructure setup designed to reach decision-makers directly and book meetings and close clients.\n\n{{firstName}} thanks for partnering with us!\n\nTotal Monthly Investment $255\nExpected Return $8,000 - $14,000\nEstimated ROI 3,039% - 5,392%\nTime to Results 60 Days\nSMS numbers & verification tools billed monthly at cost.",
+    terms: "",
+    amountPaid: 255,
+    scheduledPayment: 0,
+  },
 ];
 
 export const SAMPLE_FROM = FROM;
