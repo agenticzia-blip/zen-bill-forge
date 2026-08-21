@@ -33,7 +33,7 @@ import {
   type SavedInvoice,
   saveInvoiceSnapshotAsync,
 } from "@/lib/invoice-storage";
-import { SAMPLES, SAMPLE_FROM, type InvoiceSample } from "@/lib/invoice-samples";
+import { SAMPLES, type InvoiceSample } from "@/lib/invoice-samples";
 
 
 type LineItem = {
