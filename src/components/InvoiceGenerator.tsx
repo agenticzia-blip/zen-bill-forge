@@ -358,6 +358,27 @@ export default function InvoiceGenerator() {
     if (!state.invoiceNumber.trim()) hide('[data-export="invoiceNumber"]');
     if (!state.date) hide('[data-export="date"]');
 
+    // Strip the logo-based theme color for the PDF capture so the
+    // downloaded file uses the default neutral theme, not the swatch.
+    const rootEl = document.documentElement;
+    const themeVars = [
+      "--primary",
+      "--accent",
+      "--primary-foreground",
+      "--accent-foreground",
+    ];
+    const savedVars: Record<string, string> = {};
+    themeVars.forEach((v) => {
+      savedVars[v] = rootEl.style.getPropertyValue(v);
+      rootEl.style.removeProperty(v);
+    });
+    restore.push(() => {
+      themeVars.forEach((v) => {
+        if (savedVars[v]) rootEl.style.setProperty(v, savedVars[v]);
+        else rootEl.style.removeProperty(v);
+      });
+    });
+
     // Flatten remaining inputs into plain text so the PDF has no blank rectangles
     const root = invoiceRef.current;
     root.classList.add("exporting");
