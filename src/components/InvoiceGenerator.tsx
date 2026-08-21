@@ -78,16 +78,25 @@ type InvoiceState = {
   savedId?: string;
 };
 
-// Always-on branding: sender block and closing note are mandatory.
+// Always-on branding: sender block, opening description and closing note are mandatory.
 export const MANDATORY_FROM = "Ziauddin Shah | AppointFunnels";
+export const MANDATORY_DESCRIPTION =
+  "Complete cold emails outreach infrastructure setup designed to reach decision-makers directly and book meetings and close clients.";
 export const MANDATORY_NOTE =
   "{{firstName}} Thanks For Choosing Appoint Funnels. We're excited to get your pipeline running.";
 
-const noteKey = (t: string) => t.replace(/\s+/g, " ").trim().toLowerCase();
+const norm = (t: string) => t.replace(/\s+/g, " ").trim().toLowerCase();
 export function ensureMandatoryNote(text: string): string {
-  const base = (text ?? "").trim();
-  if (noteKey(base).includes(noteKey(MANDATORY_NOTE))) return base;
-  return base ? `${base}\n\n${MANDATORY_NOTE}` : MANDATORY_NOTE;
+  let result = (text ?? "").trim();
+  // 1) enforce the mandatory opening description (prepend if missing)
+  if (!norm(result).includes(norm(MANDATORY_DESCRIPTION))) {
+    result = result ? `${MANDATORY_DESCRIPTION}\n\n${result}` : MANDATORY_DESCRIPTION;
+  }
+  // 2) enforce the mandatory closing note (append if missing)
+  if (!norm(result).includes(norm(MANDATORY_NOTE))) {
+    result = result ? `${result}\n\n${MANDATORY_NOTE}` : MANDATORY_NOTE;
+  }
+  return result;
 }
 
 const STORAGE_KEY = CURRENT_KEY;
@@ -146,7 +155,7 @@ const defaultState = (): InvoiceState => ({
   amountPaid: "",
   scheduledPayment: "",
   scheduledDate: "",
-  notes: MANDATORY_NOTE,
+  notes: ensureMandatoryNote(""),
   terms: "",
   currency: "USD",
   labels: { ...DEFAULT_LABELS },
