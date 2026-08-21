@@ -38,7 +38,9 @@ Return ONLY JSON matching this shape (omit unknown fields, never invent prices):
   "amountPaid": string,
   "scheduledPayment": string
 }
-Keep rate as the plain number (no currency symbol). Keep every line item found.`;
+Keep rate as the plain number (no currency symbol). Keep every line item found.
+Copy every item description VERBATIM from the client text — never rewrite, shorten, summarise or invent wording.
+Never output a "from" field; the sender block is fixed by the app.`;
 
 export const parseProposalToInvoice = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => InputSchema.parse(data))

@@ -33,7 +33,7 @@ import {
   type SavedInvoice,
   saveInvoiceSnapshotAsync,
 } from "@/lib/invoice-storage";
-import { SAMPLES, SAMPLE_FROM, type InvoiceSample } from "@/lib/invoice-samples";
+import { SAMPLES, type InvoiceSample } from "@/lib/invoice-samples";
 
 
 type LineItem = {
@@ -75,7 +75,20 @@ type InvoiceState = {
   labels: Record<string, string>;
   themeColor: string | null;
   logoPalette: string[];
+  savedId?: string;
 };
+
+// Always-on branding: sender block and closing note are mandatory.
+export const MANDATORY_FROM = "Ziauddin Shah | AppointFunnels";
+export const MANDATORY_NOTE =
+  "{{firstName}} Thanks For Choosing Appoint Funnels. We're excited to get your pipeline running.";
+
+const noteKey = (t: string) => t.replace(/\s+/g, " ").trim().toLowerCase();
+export function ensureMandatoryNote(text: string): string {
+  const base = (text ?? "").trim();
+  if (noteKey(base).includes(noteKey(MANDATORY_NOTE))) return base;
+  return base ? `${base}\n\n${MANDATORY_NOTE}` : MANDATORY_NOTE;
+}
 
 const STORAGE_KEY = CURRENT_KEY;
 
@@ -118,7 +131,8 @@ const newItem = (): LineItem => ({
 const defaultState = (): InvoiceState => ({
   logo: null,
   invoiceNumber: `INV-${Date.now().toString().slice(-6)}`,
-  from: "",
+  savedId: crypto.randomUUID(),
+  from: MANDATORY_FROM,
   billTo: "",
   shipTo: "",
   date: today(),
@@ -132,7 +146,7 @@ const defaultState = (): InvoiceState => ({
   amountPaid: "",
   scheduledPayment: "",
   scheduledDate: "",
-  notes: "",
+  notes: MANDATORY_NOTE,
   terms: "",
   currency: "USD",
   labels: { ...DEFAULT_LABELS },
@@ -152,7 +166,16 @@ export default function InvoiceGenerator() {
   useEffect(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) setState({ ...defaultState(), ...JSON.parse(saved) });
+      if (saved) {
+        const parsed = JSON.parse(saved) as Partial<InvoiceState>;
+        setState((prev) => ({
+          ...defaultState(),
+          ...parsed,
+          from: MANDATORY_FROM,
+          notes: ensureMandatoryNote(parsed.notes ?? ""),
+          savedId: parsed.savedId ?? prev.savedId ?? crypto.randomUUID(),
+        }));
+      }
       // clear "load pending" flag if set from /saved navigation
       localStorage.removeItem(LOAD_PENDING_KEY);
     } catch {}
@@ -234,7 +257,7 @@ export default function InvoiceGenerator() {
   );
 
   const buildSavedEntry = (): SavedInvoice => ({
-    id: crypto.randomUUID(),
+    id: state.savedId ?? state.invoiceNumber ?? crypto.randomUUID(),
     savedAt: Date.now(),
     invoiceNumber: state.invoiceNumber,
     displayName,
@@ -447,14 +470,14 @@ export default function InvoiceGenerator() {
         return {
           ...s,
           billTo: pick("billTo", s.billTo),
-          from: pick("from", s.from),
+          from: MANDATORY_FROM,
           poNumber: pick("poNumber", s.poNumber),
           paymentTerms: pick("paymentTerms", s.paymentTerms),
           currency: CURRENCIES.some((c) => c.code === str(r.currency))
             ? str(r.currency)
             : s.currency,
           items: items.length ? items : s.items,
-          notes: pick("notes", s.notes),
+          notes: ensureMandatoryNote(pick("notes", "")),
           terms: pick("terms", s.terms),
           taxRate: pick("taxRate", s.taxRate),
           discount: pick("discount", s.discount),
@@ -481,7 +504,7 @@ export default function InvoiceGenerator() {
       themeColor: s.themeColor,
       currency: sample.currency ?? s.currency,
       invoiceNumber: `INV-${Date.now().toString().slice(-6)}`,
-      from: SAMPLE_FROM,
+      from: MANDATORY_FROM,
       billTo: sample.billTo ?? "",
       shipTo: "",
       date: sample.date ?? today(),
@@ -489,7 +512,7 @@ export default function InvoiceGenerator() {
       dueDate: sample.dueDate ?? "",
       poNumber: sample.product,
       items: sample.items.map((it) => ({ id: crypto.randomUUID(), ...it })),
-      notes: sample.notes,
+      notes: ensureMandatoryNote(sample.notes),
       terms: sample.terms ?? "",
       amountPaid: sample.amountPaid ? String(sample.amountPaid) : "",
       scheduledPayment: sample.scheduledPayment ? String(sample.scheduledPayment) : "",

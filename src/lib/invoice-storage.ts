@@ -24,8 +24,8 @@ type DeletedInvoiceMarker = {
   deletedAt: number;
 };
 
-// Effectively unlimited capacity — keep up to 10,000 invoices locally.
-const MAX_SAVED = 10000;
+// Effectively unlimited capacity — up to 1,000,000 invoices locally.
+const MAX_SAVED = 1000000;
 
 export function getSavedInvoices(): SavedInvoice[] {
   try {
