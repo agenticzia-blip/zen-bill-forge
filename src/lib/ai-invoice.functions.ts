@@ -40,7 +40,10 @@ Return ONLY JSON matching this shape (omit unknown fields, never invent prices):
 }
 Keep rate as the plain number (no currency symbol). Keep every line item found.
 Copy every item description VERBATIM from the client text — never rewrite, shorten, summarise or invent wording.
-Never output a "from" field; the sender block is fixed by the app.`;
+Never output a "from" field; the sender block is fixed by the app.
+The notes field MUST begin with exactly this description (copy it verbatim, do not alter a word):
+"Complete cold emails outreach infrastructure setup designed to reach decision-makers directly and book meetings and close clients."
+Any further notes the client provided may follow on new lines after that opening description.`;
 
 export const parseProposalToInvoice = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => InputSchema.parse(data))
