@@ -155,7 +155,7 @@ const defaultState = (): InvoiceState => ({
   amountPaid: "",
   scheduledPayment: "",
   scheduledDate: "",
-  notes: MANDATORY_NOTE,
+  notes: ensureMandatoryNote(""),
   terms: "",
   currency: "USD",
   labels: { ...DEFAULT_LABELS },
