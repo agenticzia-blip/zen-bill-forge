@@ -76,28 +76,50 @@ type InvoiceState = {
   themeColor: string | null;
   logoPalette: string[];
   savedId?: string;
+  channel?: Channel;
+
 };
 
-// Always-on branding: sender block, opening description and closing note are mandatory.
+// Always-on branding: sender block, the Description text and the closing Note are fixed.
 export const MANDATORY_FROM = "Ziauddin Shah | AppointFunnels";
-export const MANDATORY_DESCRIPTION =
-  "Complete cold emails outreach infrastructure setup designed to reach decision-makers directly and book meetings and close clients.";
+export type Channel = "email" | "sms";
+
+// The Description card holds ONLY this sentence. "emails" flips to "sms" for SMS systems.
+export const descriptionFor = (channel: Channel) =>
+  `Complete cold ${channel === "sms" ? "sms" : "emails"} outreach infrastructure setup designed to reach decision-makers directly and book meetings and close clients.`;
+export const MANDATORY_DESCRIPTION = descriptionFor("email");
+
 export const MANDATORY_NOTE =
   "{{firstName}} Thanks For Choosing Appoint Funnels. We're excited to get your pipeline running.";
 
-const norm = (t: string) => t.replace(/\s+/g, " ").trim().toLowerCase();
-export function ensureMandatoryNote(text: string): string {
-  let result = (text ?? "").trim();
-  // 1) enforce the mandatory opening description (prepend if missing)
-  if (!norm(result).includes(norm(MANDATORY_DESCRIPTION))) {
-    result = result ? `${MANDATORY_DESCRIPTION}\n\n${result}` : MANDATORY_DESCRIPTION;
-  }
-  // 2) enforce the mandatory closing note (append if missing)
-  if (!norm(result).includes(norm(MANDATORY_NOTE))) {
-    result = result ? `${result}\n\n${MANDATORY_NOTE}` : MANDATORY_NOTE;
-  }
-  return result;
+// Decide whether a proposal / sample is an SMS system or an email system.
+export function detectChannel(text: string): Channel {
+  return /\b(sms|text message|texting|whatsapp)\b/i.test(text ?? "") ? "sms" : "email";
 }
+
+const norm = (t: string) => t.replace(/\s+/g, " ").trim().toLowerCase();
+// Drop any old boilerplate lines so they never duplicate the fixed Description / Note.
+export function stripBoilerplate(text: string): string {
+  return (text ?? "")
+    .split(/\r?\n/)
+    .filter(
+      (l) =>
+        !/^complete cold /i.test(l.trim()) &&
+        !/thanks for (partnering|choosing)/i.test(l),
+    )
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+
+// Notes card: user text is kept, but the closing thank-you line is always present.
+export function ensureMandatoryNote(text: string): string {
+  const result = (text ?? "").trim();
+  if (norm(result).includes(norm(MANDATORY_NOTE))) return result;
+  return result ? `${result}\n\n${MANDATORY_NOTE}` : MANDATORY_NOTE;
+}
+
 
 const STORAGE_KEY = CURRENT_KEY;
 
@@ -155,8 +177,10 @@ const defaultState = (): InvoiceState => ({
   amountPaid: "",
   scheduledPayment: "",
   scheduledDate: "",
-  notes: ensureMandatoryNote(""),
-  terms: "",
+  channel: "email",
+  notes: descriptionFor("email"),
+  terms: ensureMandatoryNote(""),
+
   currency: "USD",
   labels: { ...DEFAULT_LABELS },
   themeColor: null,
@@ -181,7 +205,9 @@ export default function InvoiceGenerator() {
           ...defaultState(),
           ...parsed,
           from: MANDATORY_FROM,
-          notes: ensureMandatoryNote(parsed.notes ?? ""),
+          notes: descriptionFor(parsed.channel ?? "email"),
+          terms: ensureMandatoryNote(parsed.terms ?? ""),
+
           savedId: parsed.savedId ?? prev.savedId ?? crypto.randomUUID(),
         }));
       }
@@ -253,7 +279,9 @@ export default function InvoiceGenerator() {
   const clientFirstName = firstLine(state.billTo).split(/\s+/).filter(Boolean)[0] || "";
   const personalizeText = (text: string) =>
     clientFirstName ? text.replace(/{{\s*firstName\s*}}/gi, clientFirstName) : text;
-  const personalizedNotes = personalizeText(state.notes);
+  const personalizedNotes = descriptionFor(state.channel ?? "email");
+  const personalizedTerms = personalizeText(state.terms);
+
   const displayName = [clientName, state.invoiceNumber, state.date]
     .filter(Boolean)
     .join(" — ");
@@ -272,7 +300,7 @@ export default function InvoiceGenerator() {
     displayName,
     total,
     currencySymbol: currency.symbol,
-    snapshot: { ...state, notes: personalizedNotes },
+    snapshot: { ...state, notes: personalizedNotes, terms: personalizedTerms },
   });
 
 
@@ -507,8 +535,12 @@ export default function InvoiceGenerator() {
             ? str(r.currency)
             : s.currency,
           items: items.length ? items : s.items,
-          notes: ensureMandatoryNote(pick("notes", "")),
-          terms: pick("terms", s.terms),
+          channel: detectChannel(`${aiText} ${str(r.poNumber)} ${str(r.notes)}`),
+          notes: descriptionFor(
+            detectChannel(`${aiText} ${str(r.poNumber)} ${str(r.notes)}`),
+          ),
+          terms: ensureMandatoryNote(pick("terms", s.terms)),
+
           taxRate: pick("taxRate", s.taxRate),
           discount: pick("discount", s.discount),
           shipping: pick("shipping", s.shipping),
@@ -542,8 +574,15 @@ export default function InvoiceGenerator() {
       dueDate: sample.dueDate ?? "",
       poNumber: sample.product,
       items: sample.items.map((it) => ({ id: crypto.randomUUID(), ...it })),
-      notes: ensureMandatoryNote(sample.notes),
-      terms: sample.terms ?? "",
+      channel: detectChannel(`${sample.title} ${sample.product}`),
+      notes: descriptionFor(detectChannel(`${sample.title} ${sample.product}`)),
+      terms: ensureMandatoryNote(
+        [sample.terms ?? "", stripBoilerplate(sample.notes ?? "")]
+          .filter((t) => t.trim())
+          .join("\n\n"),
+      ),
+
+
       amountPaid: sample.amountPaid ? String(sample.amountPaid) : "",
       scheduledPayment: sample.scheduledPayment ? String(sample.scheduledPayment) : "",
     }));
@@ -927,9 +966,8 @@ export default function InvoiceGenerator() {
                   className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
                 />
                 <Textarea
-                  value={personalizedNotes}
-                  onChange={(e) => update("notes", e.target.value)}
-                  placeholder="Description — any relevant information not already covered"
+                  value={descriptionFor(state.channel ?? "email")}
+                  readOnly
                   rows={3}
                   className="mt-2 rounded-lg"
                 />
@@ -941,12 +979,14 @@ export default function InvoiceGenerator() {
                   className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
                 />
                 <Textarea
-                  value={state.terms}
+                  value={personalizedTerms}
                   onChange={(e) => update("terms", e.target.value)}
+                  onBlur={() => update("terms", ensureMandatoryNote(state.terms))}
                   placeholder="Notes — late fees, payment methods, delivery..."
                   rows={3}
                   className="mt-2 rounded-lg"
                 />
+
               </div>
             </div>
 
