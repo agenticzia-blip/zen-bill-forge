@@ -265,7 +265,9 @@ export default function InvoiceGenerator() {
   const clientFirstName = firstLine(state.billTo).split(/\s+/).filter(Boolean)[0] || "";
   const personalizeText = (text: string) =>
     clientFirstName ? text.replace(/{{\s*firstName\s*}}/gi, clientFirstName) : text;
-  const personalizedNotes = personalizeText(state.notes);
+  const personalizedNotes = descriptionFor(state.channel ?? "email");
+  const personalizedTerms = personalizeText(state.terms);
+
   const displayName = [clientName, state.invoiceNumber, state.date]
     .filter(Boolean)
     .join(" — ");
