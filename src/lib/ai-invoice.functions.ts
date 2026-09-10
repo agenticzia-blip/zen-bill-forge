@@ -42,7 +42,7 @@ Keep rate as the plain number (no currency symbol). Keep every line item found.
 Copy every item description VERBATIM from the client text — never rewrite, shorten, summarise or invent wording.
 Never output a "from" field; the sender block is fixed by the app.
 Never output a "notes" field; the description block is fixed by the app.
-Put any extra conditions or guarantees in "terms" only.
+Put any extra conditions or guarantees in "terms" only.`;
 
 export const parseProposalToInvoice = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => InputSchema.parse(data))
