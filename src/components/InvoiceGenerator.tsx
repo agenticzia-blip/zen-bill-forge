@@ -191,7 +191,9 @@ export default function InvoiceGenerator() {
           ...defaultState(),
           ...parsed,
           from: MANDATORY_FROM,
-          notes: ensureMandatoryNote(parsed.notes ?? ""),
+          notes: descriptionFor(parsed.channel ?? "email"),
+          terms: ensureMandatoryNote(parsed.terms ?? ""),
+
           savedId: parsed.savedId ?? prev.savedId ?? crypto.randomUUID(),
         }));
       }
