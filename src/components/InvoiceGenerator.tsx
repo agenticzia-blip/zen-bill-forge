@@ -76,6 +76,8 @@ type InvoiceState = {
   themeColor: string | null;
   logoPalette: string[];
   savedId?: string;
+  channel?: Channel;
+
 };
 
 // Always-on branding: sender block, the Description text and the closing Note are fixed.
