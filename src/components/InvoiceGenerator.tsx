@@ -562,7 +562,12 @@ export default function InvoiceGenerator() {
       items: sample.items.map((it) => ({ id: crypto.randomUUID(), ...it })),
       channel: detectChannel(`${sample.title} ${sample.product}`),
       notes: descriptionFor(detectChannel(`${sample.title} ${sample.product}`)),
-      terms: ensureMandatoryNote(sample.terms ?? ""),
+      terms: ensureMandatoryNote(
+        [sample.terms ?? "", stripBoilerplate(sample.notes ?? "")]
+          .filter((t) => t.trim())
+          .join("\n\n"),
+      ),
+
 
       amountPaid: sample.amountPaid ? String(sample.amountPaid) : "",
       scheduledPayment: sample.scheduledPayment ? String(sample.scheduledPayment) : "",
