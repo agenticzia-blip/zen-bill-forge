@@ -286,7 +286,7 @@ export default function InvoiceGenerator() {
     displayName,
     total,
     currencySymbol: currency.symbol,
-    snapshot: { ...state, notes: personalizedNotes },
+    snapshot: { ...state, notes: personalizedNotes, terms: personalizedTerms },
   });
 
 
