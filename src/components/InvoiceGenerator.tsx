@@ -945,9 +945,8 @@ export default function InvoiceGenerator() {
                   className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
                 />
                 <Textarea
-                  value={personalizedNotes}
-                  onChange={(e) => update("notes", e.target.value)}
-                  placeholder="Description — any relevant information not already covered"
+                  value={descriptionFor(state.channel ?? "email")}
+                  readOnly
                   rows={3}
                   className="mt-2 rounded-lg"
                 />
@@ -959,12 +958,14 @@ export default function InvoiceGenerator() {
                   className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
                 />
                 <Textarea
-                  value={state.terms}
+                  value={personalizedTerms}
                   onChange={(e) => update("terms", e.target.value)}
+                  onBlur={() => update("terms", ensureMandatoryNote(state.terms))}
                   placeholder="Notes — late fees, payment methods, delivery..."
                   rows={3}
                   className="mt-2 rounded-lg"
                 />
+
               </div>
             </div>
 
