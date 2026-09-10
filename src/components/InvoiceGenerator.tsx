@@ -98,6 +98,20 @@ export function detectChannel(text: string): Channel {
 }
 
 const norm = (t: string) => t.replace(/\s+/g, " ").trim().toLowerCase();
+// Drop any old boilerplate lines so they never duplicate the fixed Description / Note.
+export function stripBoilerplate(text: string): string {
+  return (text ?? "")
+    .split(/\r?\n/)
+    .filter(
+      (l) =>
+        !/^complete cold /i.test(l.trim()) &&
+        !/thanks for (partnering|choosing)/i.test(l),
+    )
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 
 // Notes card: user text is kept, but the closing thank-you line is always present.
 export function ensureMandatoryNote(text: string): string {
