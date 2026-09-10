@@ -558,8 +558,10 @@ export default function InvoiceGenerator() {
       dueDate: sample.dueDate ?? "",
       poNumber: sample.product,
       items: sample.items.map((it) => ({ id: crypto.randomUUID(), ...it })),
-      notes: ensureMandatoryNote(sample.notes),
-      terms: sample.terms ?? "",
+      channel: detectChannel(`${sample.title} ${sample.product}`),
+      notes: descriptionFor(detectChannel(`${sample.title} ${sample.product}`)),
+      terms: ensureMandatoryNote(sample.terms ?? ""),
+
       amountPaid: sample.amountPaid ? String(sample.amountPaid) : "",
       scheduledPayment: sample.scheduledPayment ? String(sample.scheduledPayment) : "",
     }));
