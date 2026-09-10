@@ -163,8 +163,10 @@ const defaultState = (): InvoiceState => ({
   amountPaid: "",
   scheduledPayment: "",
   scheduledDate: "",
-  notes: ensureMandatoryNote(""),
-  terms: "",
+  channel: "email",
+  notes: descriptionFor("email"),
+  terms: ensureMandatoryNote(""),
+
   currency: "USD",
   labels: { ...DEFAULT_LABELS },
   themeColor: null,
