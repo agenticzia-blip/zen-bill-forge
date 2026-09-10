@@ -12,8 +12,6 @@ export type ParsedInvoice = {
   paymentTerms?: string;
   currency?: string;
   items?: { description?: string; quantity?: string; rate?: string }[];
-  notes?: string;
-  terms?: string;
   taxRate?: string;
   discount?: string;
   shipping?: string;
@@ -30,8 +28,6 @@ Return ONLY JSON matching this shape (omit unknown fields, never invent prices):
   "paymentTerms": string,
   "currency": "USD" | "PKR" | "EUR" | "GBP",
   "items": [{ "description": string, "quantity": string, "rate": string }],
-  "notes": string,             // short description of the offer
-  "terms": string,             // guarantees / conditions
   "taxRate": string,
   "discount": string,
   "shipping": string,
@@ -41,8 +37,8 @@ Return ONLY JSON matching this shape (omit unknown fields, never invent prices):
 Keep rate as the plain number (no currency symbol). Keep every line item found.
 Copy every item description VERBATIM from the client text — never rewrite, shorten, summarise or invent wording.
 Never output a "from" field; the sender block is fixed by the app.
-Never output a "notes" field; the description block is fixed by the app.
-Put any extra conditions or guarantees in "terms" only.`;
+Never output "notes", "terms", descriptions, guarantees, conditions, promises, or any other extra text outside the line items supplied by the user.
+Extract only details explicitly present in the user's text. Never infer, embellish, or invent anything.`;
 
 export const parseProposalToInvoice = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => InputSchema.parse(data))

@@ -98,26 +98,9 @@ export function detectChannel(text: string): Channel {
 }
 
 const norm = (t: string) => t.replace(/\s+/g, " ").trim().toLowerCase();
-// Drop any old boilerplate lines so they never duplicate the fixed Description / Note.
-export function stripBoilerplate(text: string): string {
-  return (text ?? "")
-    .split(/\r?\n/)
-    .filter(
-      (l) =>
-        !/^complete cold /i.test(l.trim()) &&
-        !/thanks for (partnering|choosing)/i.test(l),
-    )
-    .join("\n")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
-}
-
-
-// Notes card: user text is kept, but the closing thank-you line is always present.
-export function ensureMandatoryNote(text: string): string {
-  const result = (text ?? "").trim();
-  if (norm(result).includes(norm(MANDATORY_NOTE))) return result;
-  return result ? `${result}\n\n${MANDATORY_NOTE}` : MANDATORY_NOTE;
+// Notes contains only the fixed Appoint Funnels message—never inferred extras.
+export function ensureMandatoryNote(): string {
+  return MANDATORY_NOTE;
 }
 
 
@@ -179,7 +162,7 @@ const defaultState = (): InvoiceState => ({
   scheduledDate: "",
   channel: "email",
   notes: descriptionFor("email"),
-  terms: ensureMandatoryNote(""),
+  terms: ensureMandatoryNote(),
 
   currency: "USD",
   labels: { ...DEFAULT_LABELS },
@@ -206,7 +189,7 @@ export default function InvoiceGenerator() {
           ...parsed,
           from: MANDATORY_FROM,
           notes: descriptionFor(parsed.channel ?? "email"),
-          terms: ensureMandatoryNote(parsed.terms ?? ""),
+          terms: ensureMandatoryNote(),
 
           savedId: parsed.savedId ?? prev.savedId ?? crypto.randomUUID(),
         }));
@@ -539,7 +522,7 @@ export default function InvoiceGenerator() {
           notes: descriptionFor(
             detectChannel(`${aiText} ${str(r.poNumber)} ${str(r.notes)}`),
           ),
-          terms: ensureMandatoryNote(pick("terms", s.terms)),
+          terms: ensureMandatoryNote(),
 
           taxRate: pick("taxRate", s.taxRate),
           discount: pick("discount", s.discount),
@@ -576,11 +559,7 @@ export default function InvoiceGenerator() {
       items: sample.items.map((it) => ({ id: crypto.randomUUID(), ...it })),
       channel: detectChannel(`${sample.title} ${sample.product}`),
       notes: descriptionFor(detectChannel(`${sample.title} ${sample.product}`)),
-      terms: ensureMandatoryNote(
-        [sample.terms ?? "", stripBoilerplate(sample.notes ?? "")]
-          .filter((t) => t.trim())
-          .join("\n\n"),
-      ),
+       terms: ensureMandatoryNote(),
 
 
       amountPaid: sample.amountPaid ? String(sample.amountPaid) : "",
@@ -980,9 +959,7 @@ export default function InvoiceGenerator() {
                 />
                 <Textarea
                   value={personalizedTerms}
-                  onChange={(e) => update("terms", e.target.value)}
-                  onBlur={() => update("terms", ensureMandatoryNote(state.terms))}
-                  placeholder="Notes — late fees, payment methods, delivery..."
+                  readOnly
                   rows={3}
                   className="mt-2 rounded-lg"
                 />
