@@ -518,10 +518,8 @@ export default function InvoiceGenerator() {
             ? str(r.currency)
             : s.currency,
           items: items.length ? items : s.items,
-          channel: detectChannel(`${aiText} ${str(r.poNumber)} ${str(r.notes)}`),
-          notes: descriptionFor(
-            detectChannel(`${aiText} ${str(r.poNumber)} ${str(r.notes)}`),
-          ),
+          channel: detectChannel(`${aiText} ${str(r.poNumber)}`),
+          notes: descriptionFor(detectChannel(`${aiText} ${str(r.poNumber)}`)),
           terms: ensureMandatoryNote(),
 
           taxRate: pick("taxRate", s.taxRate),
