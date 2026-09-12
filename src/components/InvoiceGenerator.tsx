@@ -530,7 +530,7 @@ export default function InvoiceGenerator() {
           discount: pick("discount", s.discount),
           shipping: pick("shipping", s.shipping),
           amountPaid: pick("amountPaid", s.amountPaid),
-          totalInPkr: pick("totalInPkr", s.totalInPkr),
+          totalInPkr: s.totalInPkr,
           scheduledPayment: pick("scheduledPayment", s.scheduledPayment),
         };
       });
