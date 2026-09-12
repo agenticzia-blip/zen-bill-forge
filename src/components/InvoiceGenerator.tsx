@@ -67,6 +67,7 @@ type InvoiceState = {
   discount: string;
   shipping: string;
   amountPaid: string;
+  totalInPkr: string;
   scheduledPayment: string;
   scheduledDate: string;
   notes: string;
@@ -128,6 +129,7 @@ const DEFAULT_LABELS: Record<string, string> = {
   shipping: "Shipping",
   total: "Total",
   amountPaid: "Amount Paid",
+  totalInPkr: "Total In PKR",
   balanceDue: "Balance Due",
   scheduledPayment: "Scheduled Payment",
   scheduledDate: "Scheduled Date",
@@ -158,6 +160,7 @@ const defaultState = (): InvoiceState => ({
   discount: "",
   shipping: "",
   amountPaid: "",
+  totalInPkr: "",
   scheduledPayment: "",
   scheduledDate: "",
   channel: "email",
@@ -364,6 +367,7 @@ export default function InvoiceGenerator() {
     if (!String(state.discount).trim()) hide('[data-export="discount"]');
     if (!String(state.shipping).trim()) hide('[data-export="shipping"]');
     if (!String(state.amountPaid).trim()) hide('[data-export="amountPaid"]');
+    if (!String(state.totalInPkr).trim()) hide('[data-export="totalInPkr"]');
     if (!state.from.trim()) hide('[data-export="from"]');
     if (!state.billTo.trim()) hide('[data-export="billTo"]');
     if (!state.invoiceNumber.trim()) hide('[data-export="invoiceNumber"]');
@@ -526,6 +530,7 @@ export default function InvoiceGenerator() {
           discount: pick("discount", s.discount),
           shipping: pick("shipping", s.shipping),
           amountPaid: pick("amountPaid", s.amountPaid),
+          totalInPkr: pick("totalInPkr", s.totalInPkr),
           scheduledPayment: pick("scheduledPayment", s.scheduledPayment),
         };
       });
@@ -561,6 +566,7 @@ export default function InvoiceGenerator() {
 
 
       amountPaid: sample.amountPaid ? String(sample.amountPaid) : "",
+      totalInPkr: "",
       scheduledPayment: sample.scheduledPayment ? String(sample.scheduledPayment) : "",
     }));
     toast.success(`Loaded sample: ${sample.title}`);
@@ -993,7 +999,7 @@ export default function InvoiceGenerator() {
                     value={state.discount}
                     onChange={(e) => update("discount", e.target.value)}
                     placeholder="—"
-                    className="h-8 w-44 rounded-md text-left"
+                    className="h-8 min-w-[14rem] flex-1 rounded-md text-left"
                   />
                 }
               />
@@ -1016,6 +1022,19 @@ export default function InvoiceGenerator() {
                 onLabelChange={(v) => updateLabel("total", v)}
                 value={fmt(total)}
                 bold
+              />
+              <TotalRow
+                label={state.labels.totalInPkr}
+                onLabelChange={(v) => updateLabel("totalInPkr", v)}
+                dataExport="totalInPkr"
+                value={
+                  <Input
+                    value={state.totalInPkr}
+                    onChange={(e) => update("totalInPkr", e.target.value)}
+                    placeholder="—"
+                    className="h-8 w-32 rounded-md text-right"
+                  />
+                }
               />
               <TotalRow
                 label={state.labels.amountPaid}
