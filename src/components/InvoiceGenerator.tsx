@@ -993,7 +993,7 @@ export default function InvoiceGenerator() {
                     value={state.discount}
                     onChange={(e) => update("discount", e.target.value)}
                     placeholder="—"
-                    className="h-8 w-28 rounded-md text-right"
+                    className="h-8 w-44 rounded-md text-left"
                   />
                 }
               />
