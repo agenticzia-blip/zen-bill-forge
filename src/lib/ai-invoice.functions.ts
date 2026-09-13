@@ -10,6 +10,7 @@ export type ParsedInvoice = {
   from?: string;
   poNumber?: string;
   paymentTerms?: string;
+  timeline?: string;
   currency?: string;
   items?: { description?: string; quantity?: string; rate?: string }[];
   taxRate?: string;
@@ -26,6 +27,7 @@ Return ONLY JSON matching this shape (omit unknown fields, never invent prices):
   "from": string,              // sender business block, only if present in text
   "poNumber": string,          // product / package name if mentioned
   "paymentTerms": string,
+  "timeline": string,          // project duration from the proposal, e.g. "45 days", "3 weeks", "2 months" — copy verbatim if mentioned
   "currency": "USD" | "PKR" | "EUR" | "GBP",
   "items": [{ "description": string, "quantity": string, "rate": string }],
   "taxRate": string,
