@@ -139,11 +139,13 @@ const today = () => new Date().toISOString().slice(0, 10);
 
 // Due date = invoice creation day (today) + timeline length from the proposal
 const dueDateFromTimeline = (text: string): string => {
-  const m = text.match(/(\d+)\s*(day|days|week|weeks|month|months)/i);
+  const m =
+    text.match(/(\d+)\s*(day|days|week|weeks|month|months)/i) ??
+    text.trim().match(/^(\d+)$/);
   if (!m) return "";
   const n = parseInt(m[1], 10);
   if (!n) return "";
-  const unit = m[2].toLowerCase();
+  const unit = (m[2] ?? "days").toLowerCase();
   const days = unit.startsWith("week") ? n * 7 : unit.startsWith("month") ? n * 30 : n;
   const d = new Date();
   d.setDate(d.getDate() + days);
@@ -577,7 +579,7 @@ export default function InvoiceGenerator() {
       shipTo: "",
       date: sample.date ?? today(),
       paymentTerms: sample.paymentTerms ?? `Net ${sample.timeline}`,
-      dueDate: sample.dueDate ?? "",
+      dueDate: sample.dueDate ?? dueDateFromTimeline(sample.timeline),
       poNumber: sample.product,
       items: sample.items.map((it) => ({ id: crypto.randomUUID(), ...it })),
       channel: detectChannel(`${sample.title} ${sample.product}`),
