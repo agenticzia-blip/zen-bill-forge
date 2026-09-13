@@ -530,7 +530,14 @@ export default function InvoiceGenerator() {
           billTo: pick("billTo", s.billTo),
           from: MANDATORY_FROM,
           poNumber: pick("poNumber", s.poNumber),
-          paymentTerms: pick("paymentTerms", s.paymentTerms),
+          paymentTerms:
+            pick("paymentTerms", "") ||
+            (str(r.timeline) ? str(r.timeline) : s.paymentTerms),
+          // Due date counts from the day the invoice is made (today) + proposal timeline
+          dueDate:
+            dueDateFromTimeline(str(r.timeline)) ||
+            dueDateFromTimeline(str(r.paymentTerms)) ||
+            s.dueDate,
           currency: CURRENCIES.some((c) => c.code === str(r.currency))
             ? str(r.currency)
             : s.currency,
