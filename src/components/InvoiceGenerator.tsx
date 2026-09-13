@@ -137,6 +137,19 @@ const DEFAULT_LABELS: Record<string, string> = {
 
 const today = () => new Date().toISOString().slice(0, 10);
 
+// Due date = invoice creation day (today) + timeline length from the proposal
+const dueDateFromTimeline = (text: string): string => {
+  const m = text.match(/(\d+)\s*(day|days|week|weeks|month|months)/i);
+  if (!m) return "";
+  const n = parseInt(m[1], 10);
+  if (!n) return "";
+  const unit = m[2].toLowerCase();
+  const days = unit.startsWith("week") ? n * 7 : unit.startsWith("month") ? n * 30 : n;
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+};
+
 const newItem = (): LineItem => ({
   id: crypto.randomUUID(),
   description: "",
