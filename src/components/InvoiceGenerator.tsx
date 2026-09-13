@@ -137,6 +137,21 @@ const DEFAULT_LABELS: Record<string, string> = {
 
 const today = () => new Date().toISOString().slice(0, 10);
 
+// Due date = invoice creation day (today) + timeline length from the proposal
+const dueDateFromTimeline = (text: string): string => {
+  const m =
+    text.match(/(\d+)\s*(day|days|week|weeks|month|months)/i) ??
+    text.trim().match(/^(\d+)$/);
+  if (!m) return "";
+  const n = parseInt(m[1], 10);
+  if (!n) return "";
+  const unit = (m[2] ?? "days").toLowerCase();
+  const days = unit.startsWith("week") ? n * 7 : unit.startsWith("month") ? n * 30 : n;
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+};
+
 const newItem = (): LineItem => ({
   id: crypto.randomUUID(),
   description: "",
@@ -517,7 +532,14 @@ export default function InvoiceGenerator() {
           billTo: pick("billTo", s.billTo),
           from: MANDATORY_FROM,
           poNumber: pick("poNumber", s.poNumber),
-          paymentTerms: pick("paymentTerms", s.paymentTerms),
+          paymentTerms:
+            pick("paymentTerms", "") ||
+            (str(r.timeline) ? str(r.timeline) : s.paymentTerms),
+          // Due date counts from the day the invoice is made (today) + proposal timeline
+          dueDate:
+            dueDateFromTimeline(str(r.timeline)) ||
+            dueDateFromTimeline(str(r.paymentTerms)) ||
+            s.dueDate,
           currency: CURRENCIES.some((c) => c.code === str(r.currency))
             ? str(r.currency)
             : s.currency,
@@ -557,7 +579,7 @@ export default function InvoiceGenerator() {
       shipTo: "",
       date: sample.date ?? today(),
       paymentTerms: sample.paymentTerms ?? `Net ${sample.timeline}`,
-      dueDate: sample.dueDate ?? "",
+      dueDate: sample.dueDate ?? dueDateFromTimeline(sample.timeline),
       poNumber: sample.product,
       items: sample.items.map((it) => ({ id: crypto.randomUUID(), ...it })),
       channel: detectChannel(`${sample.title} ${sample.product}`),
