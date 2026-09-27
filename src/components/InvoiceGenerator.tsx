@@ -220,6 +220,11 @@ export default function InvoiceGenerator() {
           ...defaultState(),
           ...parsed,
           from: MANDATORY_FROM,
+          labels: {
+            ...DEFAULT_LABELS,
+            ...parsed.labels,
+            poNumber: parsed.labels?.poNumber === "PO Number" ? "Product Name" : (parsed.labels?.poNumber ?? "Product Name"),
+          },
           notes: descriptionFor(parsed.channel ?? "email"),
           terms: ensureMandatoryNote(),
 
@@ -386,6 +391,7 @@ export default function InvoiceGenerator() {
     };
     if (!state.shipTo.trim()) hide('[data-export="shipTo"]');
     if (!state.paymentTerms.trim()) hide('[data-export="paymentTerms"]');
+    if (!state.timeline?.trim()) hide('[data-export="timeline"]');
     if (!state.dueDate) hide('[data-export="dueDate"]');
     if (!state.poNumber.trim()) hide('[data-export="poNumber"]');
     if (!personalizedNotes.trim()) hide('[data-export="notes"]');

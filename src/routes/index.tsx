@@ -12,6 +12,10 @@ export const Route = createFileRoute("/")({
         content:
           "Free, modern invoice generator. Create, customize, and download professional PDF invoices in seconds with multi-currency support.",
       },
+      { property: "og:title", content: "Invoice Generator — Create & Download Professional Invoices" },
+      { property: "og:description", content: "Create, customize, and download professional PDF invoices with multi-currency support." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
 });
