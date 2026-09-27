@@ -22,6 +22,10 @@ export const Route = createFileRoute("/saved")({
         content:
           "Your downloaded invoices, saved locally and ready to re-open or edit.",
       },
+      { property: "og:title", content: "Saved Invoices — Invoice Generator" },
+      { property: "og:description", content: "Reopen and edit your saved invoices." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
 });

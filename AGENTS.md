@@ -1,0 +1,1 @@
+ - Keep proposal contract duration separate from payment terms and guarantee windows; only an explicitly stated contract/project timeline sets the due date from the invoice creation day, because other durations are not deadlines.

@@ -23,11 +23,11 @@ export type ParsedInvoice = {
 const SYSTEM = `You turn messy proposal / pricing text into structured invoice data.
 Return ONLY JSON matching this shape (omit unknown fields, never invent prices):
 {
-  "billTo": string,            // client / company name + any contact lines
+  "billTo": string,            // client / company name + any contact lines, e.g. "Mark from Keystone Concrete"
   "from": string,              // sender business block, only if present in text
-  "poNumber": string,          // product / package name if mentioned
-  "paymentTerms": string,
-  "timeline": string,          // project duration from the proposal, e.g. "45 days", "3 weeks", "2 months" — copy verbatim if mentioned
+  "poNumber": string,          // product name / package name if mentioned; this fills Product Name, never a number unless the product name itself contains one
+  "paymentTerms": string,      // ONLY explicit payment terms; never a project timeline
+  "timeline": string,          // ONLY explicit contract/project timeline or duration, e.g. "Contract timeline: 45 days". Never use guarantee windows, payment deadlines, time to results, or other dates
   "currency": "USD" | "PKR" | "EUR" | "GBP",
   "items": [{ "description": string, "quantity": string, "rate": string }],
   "taxRate": string,
@@ -38,6 +38,7 @@ Return ONLY JSON matching this shape (omit unknown fields, never invent prices):
 }
 Keep rate as the plain number (no currency symbol). Keep every line item found.
 Copy every item description VERBATIM from the client text — never rewrite, shorten, summarise or invent wording.
+For "Mark from Keystone Concrete", billTo is "Mark\nKeystone Concrete". If the price is $3000, rate is "3000"; don't turn a guarantee such as "10 jobs guaranteed in 45 days" into a line item, timeline, or payment term. If the proposal separately states "Contract timeline: 45 days", then timeline is "45 Days".
 Never output a "from" field; the sender block is fixed by the app.
 Never output "notes", "terms", descriptions, guarantees, conditions, promises, or any other extra text outside the line items supplied by the user.
 Extract only details explicitly present in the user's text. Never infer, embellish, or invent anything.`;
