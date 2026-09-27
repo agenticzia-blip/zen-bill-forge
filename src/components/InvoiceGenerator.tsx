@@ -668,7 +668,7 @@ export default function InvoiceGenerator() {
             value={aiText}
             onChange={(e) => setAiText(e.target.value)}
             rows={4}
-            placeholder={"e.g. Client: Mark from Keystone Concrete\nProduct Name: Sales System\nPrice: $3000\nContract timeline: 45 days\n10 jobs guaranteed in 45 days"}
+            placeholder={"e.g. Client: Mark from Keystone Concrete\nProduct Name: Sales System\nRate: $3000\nContract timeline: 45 days\n10 jobs guaranteed in 45 days"}
             className="rounded-lg"
           />
           <div className="mt-3 flex justify-end">
