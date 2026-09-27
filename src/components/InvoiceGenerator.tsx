@@ -147,7 +147,10 @@ const contractTimelineFromText = (text: string): string => {
   const match = text.match(/\b(?:contract|project)\s+(?:timeline|duration|term|length)\s*(?::|=|is|of|-)?\s*(\d+\s*(?:days?|weeks?|months?))\b/i)
     ?? text.match(/\b(?:timeline|contract period|project period)\s*(?::|=|is|of|-)?\s*(\d+\s*(?:days?|weeks?|months?))\b/i)
     ?? text.match(/\b(\d+\s*(?:days?|weeks?|months?))\s+(?:contract|project)\b/i);
-  return match?.[1]?.replace(/\s+/, " ") ?? "";
+  if (!match) return "";
+  return match[1].replace(/\s+/, " ").replace(/\b(days?|weeks?|months?)\b/i, (unit) =>
+    unit[0].toUpperCase() + unit.slice(1).toLowerCase(),
+  );
 };
 
 // Due date = invoice creation day (today) + timeline length from the proposal
