@@ -59,6 +59,7 @@ type InvoiceState = {
   billTo: string;
   shipTo: string;
   date: string;
+  timeline: string;
   paymentTerms: string;
   dueDate: string;
   poNumber: string;
@@ -114,9 +115,10 @@ const DEFAULT_LABELS: Record<string, string> = {
   billTo: "Bill To",
   shipTo: "Ship To",
   date: "Date",
+  timeline: "Contract Timeline",
   paymentTerms: "Payment Terms",
   dueDate: "Due Date",
-  poNumber: "PO Number",
+  poNumber: "Product Name",
   itemDescription: "Item Description",
   quantity: "Qty",
   rate: "Rate",
@@ -135,7 +137,18 @@ const DEFAULT_LABELS: Record<string, string> = {
   scheduledDate: "Scheduled Date",
 };
 
-const today = () => new Date().toISOString().slice(0, 10);
+const localDate = (date: Date) =>
+  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+const today = () => localDate(new Date());
+
+// Only explicit contract/project timelines count. A payment deadline, a guarantee,
+// or a "time to results" line must not become the contract duration.
+const contractTimelineFromText = (text: string): string => {
+  const match = text.match(/\b(?:contract|project)\s+(?:timeline|duration|term|length)\s*(?::|=|is|of|-)?\s*(\d+\s*(?:days?|weeks?|months?))\b/i)
+    ?? text.match(/\b(?:timeline|contract period|project period)\s*(?::|=|is|of|-)?\s*(\d+\s*(?:days?|weeks?|months?))\b/i)
+    ?? text.match(/\b(\d+\s*(?:days?|weeks?|months?))\s+(?:contract|project)\b/i);
+  return match?.[1]?.replace(/\s+/, " ") ?? "";
+};
 
 // Due date = invoice creation day (today) + timeline length from the proposal
 const dueDateFromTimeline = (text: string): string => {
@@ -149,7 +162,7 @@ const dueDateFromTimeline = (text: string): string => {
   const days = unit.startsWith("week") ? n * 7 : unit.startsWith("month") ? n * 30 : n;
   const d = new Date();
   d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
+  return localDate(d);
 };
 
 const newItem = (): LineItem => ({
@@ -167,6 +180,7 @@ const defaultState = (): InvoiceState => ({
   billTo: "",
   shipTo: "",
   date: today(),
+  timeline: "",
   paymentTerms: "",
   dueDate: "",
   poNumber: "",
@@ -532,14 +546,11 @@ export default function InvoiceGenerator() {
           billTo: pick("billTo", s.billTo),
           from: MANDATORY_FROM,
           poNumber: pick("poNumber", s.poNumber),
-          paymentTerms:
-            pick("paymentTerms", "") ||
-            (str(r.timeline) ? str(r.timeline) : s.paymentTerms),
-          // Due date counts from the day the invoice is made (today) + proposal timeline
-          dueDate:
-            dueDateFromTimeline(str(r.timeline)) ||
-            dueDateFromTimeline(str(r.paymentTerms)) ||
-            s.dueDate,
+          paymentTerms: pick("paymentTerms", s.paymentTerms),
+          // Read the contract duration from the source, never payment terms or a guarantee.
+          timeline: contractTimelineFromText(aiText),
+          date: today(),
+          dueDate: dueDateFromTimeline(contractTimelineFromText(aiText)),
           currency: CURRENCIES.some((c) => c.code === str(r.currency))
             ? str(r.currency)
             : s.currency,
@@ -578,6 +589,7 @@ export default function InvoiceGenerator() {
       billTo: sample.billTo ?? "",
       shipTo: "",
       date: sample.date ?? today(),
+      timeline: `${sample.timeline} Days`,
       paymentTerms: sample.paymentTerms ?? `Net ${sample.timeline}`,
       dueDate: sample.dueDate ?? dueDateFromTimeline(sample.timeline),
       poNumber: sample.product,
@@ -650,7 +662,7 @@ export default function InvoiceGenerator() {
             value={aiText}
             onChange={(e) => setAiText(e.target.value)}
             rows={4}
-            placeholder={"e.g. Client: Musab Ali\nElite Plan — 12000 PKR\nPaid in 45 days, first client guaranteed"}
+            placeholder={"e.g. Client: Mark from Keystone Concrete\nProduct Name: Sales System\nPrice: $3000\nContract timeline: 45 days\n10 jobs guaranteed in 45 days"}
             className="rounded-lg"
           />
           <div className="mt-3 flex justify-end">
@@ -811,7 +823,7 @@ export default function InvoiceGenerator() {
             </div>
           </div>
 
-          <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-4">
+          <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-5">
             <FieldRow
               label={state.labels.date}
               onLabelChange={(v) => updateLabel("date", v)}
@@ -821,6 +833,22 @@ export default function InvoiceGenerator() {
                 type="date"
                 value={state.date}
                 onChange={(e) => update("date", e.target.value)}
+                className="rounded-lg"
+              />
+            </FieldRow>
+            <FieldRow
+              label={state.labels.timeline ?? DEFAULT_LABELS.timeline}
+              onLabelChange={(v) => updateLabel("timeline", v)}
+              dataExport="timeline"
+            >
+              <Input
+                value={state.timeline ?? ""}
+                onChange={(e) => setState((s) => ({
+                  ...s,
+                  timeline: e.target.value,
+                  dueDate: dueDateFromTimeline(e.target.value),
+                }))}
+                placeholder="45 Days"
                 className="rounded-lg"
               />
             </FieldRow>
