@@ -1009,8 +1009,8 @@ export default function InvoiceGenerator() {
                   className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
                 />
                 <Textarea
-                  value={descriptionFor(state.channel ?? "email")}
-                  readOnly
+                  value={state.notes ?? ""}
+                  onChange={(e) => update("notes", e.target.value)}
                   rows={3}
                   className="mt-2 rounded-lg"
                 />
@@ -1023,7 +1023,7 @@ export default function InvoiceGenerator() {
                 />
                 <Textarea
                   value={personalizedTerms}
-                  readOnly
+                  onChange={(e) => update("terms", e.target.value)}
                   rows={3}
                   className="mt-2 rounded-lg"
                 />
