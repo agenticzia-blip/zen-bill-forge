@@ -302,7 +302,8 @@ export default function InvoiceGenerator() {
   const clientFirstName = firstLine(state.billTo).split(/\s+/).filter(Boolean)[0] || "";
   const personalizeText = (text: string) =>
     clientFirstName ? text.replace(/{{\s*firstName\s*}}/gi, clientFirstName) : text;
-  const personalizedNotes = descriptionFor(state.channel ?? "email");
+  // Description and Notes auto-fill on load but stay editable; state is the source of truth.
+  const personalizedNotes = state.notes;
   const personalizedTerms = personalizeText(state.terms);
 
   const displayName = [clientName, state.invoiceNumber, state.date]
