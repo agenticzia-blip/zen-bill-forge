@@ -302,7 +302,8 @@ export default function InvoiceGenerator() {
   const clientFirstName = firstLine(state.billTo).split(/\s+/).filter(Boolean)[0] || "";
   const personalizeText = (text: string) =>
     clientFirstName ? text.replace(/{{\s*firstName\s*}}/gi, clientFirstName) : text;
-  const personalizedNotes = descriptionFor(state.channel ?? "email");
+  // Description and Notes auto-fill on load but stay editable; state is the source of truth.
+  const personalizedNotes = state.notes;
   const personalizedTerms = personalizeText(state.terms);
 
   const displayName = [clientName, state.invoiceNumber, state.date]
@@ -323,7 +324,7 @@ export default function InvoiceGenerator() {
     displayName,
     total,
     currencySymbol: currency.symbol,
-    snapshot: { ...state, notes: personalizedNotes, terms: personalizedTerms },
+    snapshot: { ...state },
   });
 
 
@@ -1008,8 +1009,8 @@ export default function InvoiceGenerator() {
                   className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
                 />
                 <Textarea
-                  value={descriptionFor(state.channel ?? "email")}
-                  readOnly
+                  value={state.notes ?? ""}
+                  onChange={(e) => update("notes", e.target.value)}
                   rows={3}
                   className="mt-2 rounded-lg"
                 />
@@ -1022,7 +1023,7 @@ export default function InvoiceGenerator() {
                 />
                 <Textarea
                   value={personalizedTerms}
-                  readOnly
+                  onChange={(e) => update("terms", e.target.value)}
                   rows={3}
                   className="mt-2 rounded-lg"
                 />
