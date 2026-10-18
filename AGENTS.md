@@ -1,1 +1,3 @@
  - Keep proposal contract duration separate from payment terms and guarantee windows; only an explicitly stated contract/project timeline sets the due date from the invoice creation day, because other durations are not deadlines.
+ - Keep product detection, brand replacement, and optional payment visibility rules in the browser-safe invoice-product module so editor transitions and tests share one source of truth.
+ - Preserve the legacy first scheduled payment fields and store additional rows in the invoice snapshot so existing saved invoices remain compatible.

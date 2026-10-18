@@ -34,6 +34,7 @@ import {
   saveInvoiceSnapshotAsync,
 } from "@/lib/invoice-storage";
 import { SAMPLES, type InvoiceSample } from "@/lib/invoice-samples";
+import { activateAgenticmyze, hasPaymentContent, mentionsAgenticmyze, replaceInvoiceBrand } from "@/lib/invoice-product";
 
 
 type LineItem = {
@@ -71,6 +72,9 @@ type InvoiceState = {
   totalInPkr: string;
   scheduledPayment: string;
   scheduledDate: string;
+  additionalPayments: { id: string; amount: string; date: string }[];
+  toBePaidToday: string;
+  brand?: "appointfunnels" | "agenticmyze";
   notes: string;
   terms: string;
   currency: string;
@@ -135,6 +139,7 @@ const DEFAULT_LABELS: Record<string, string> = {
   balanceDue: "Balance Due",
   scheduledPayment: "Scheduled Payment",
   scheduledDate: "Scheduled Date",
+  toBePaidToday: "To Be Paid Today",
 };
 
 const localDate = (date: Date) =>
@@ -195,6 +200,9 @@ const defaultState = (): InvoiceState => ({
   totalInPkr: "",
   scheduledPayment: "",
   scheduledDate: "",
+  additionalPayments: [],
+  toBePaidToday: "",
+  brand: "appointfunnels",
   channel: "email",
   notes: descriptionFor("email"),
   terms: ensureMandatoryNote(),
@@ -222,14 +230,14 @@ export default function InvoiceGenerator() {
         setState((prev) => ({
           ...defaultState(),
           ...parsed,
-          from: MANDATORY_FROM,
+          from: parsed.brand === "agenticmyze" ? replaceInvoiceBrand(parsed.from ?? MANDATORY_FROM) : MANDATORY_FROM,
           labels: {
             ...DEFAULT_LABELS,
             ...parsed.labels,
             poNumber: parsed.labels?.poNumber === "PO Number" ? "Product Name" : (parsed.labels?.poNumber ?? "Product Name"),
           },
-          notes: descriptionFor(parsed.channel ?? "email"),
-          terms: ensureMandatoryNote(),
+          notes: parsed.notes ?? descriptionFor(parsed.channel ?? "email"),
+          terms: parsed.terms ?? ensureMandatoryNote(),
 
           savedId: parsed.savedId ?? prev.savedId ?? crypto.randomUUID(),
         }));
@@ -239,6 +247,13 @@ export default function InvoiceGenerator() {
     } catch {}
     setHydrated(true);
   }, []);
+
+  useEffect(() => {
+    const productText = [aiText, state.poNumber, state.from, state.notes, state.terms, ...state.items.map((item) => item.description)].join(" ");
+    if (state.brand !== "agenticmyze" && mentionsAgenticmyze(productText)) {
+      setState((s) => ({ ...activateAgenticmyze(s), brand: "agenticmyze" }));
+    }
+  }, [aiText, state.poNumber, state.from, state.notes, state.terms, state.items, state.brand]);
 
   // Apply theme color to CSS variables (not background)
   useEffect(() => {
@@ -385,7 +400,7 @@ export default function InvoiceGenerator() {
     if (!invoiceRef.current) return () => {};
     const restore: (() => void)[] = [];
     const hide = (selector: string) => {
-      const el = invoiceRef.current!.querySelector<HTMLElement>(selector);
+      const el = invoiceRef.current?.querySelector<HTMLElement>(selector);
       if (!el) return;
       const prev = el.style.display;
       el.style.display = "none";
@@ -400,8 +415,13 @@ export default function InvoiceGenerator() {
     if (!state.poNumber.trim()) hide('[data-export="poNumber"]');
     if (!personalizedNotes.trim()) hide('[data-export="notes"]');
     if (!state.terms.trim()) hide('[data-export="terms"]');
-    if (!String(state.scheduledPayment).trim() && !state.scheduledDate)
+    if (!hasPaymentContent(state.scheduledPayment, state.scheduledDate))
       hide('[data-export="scheduled"]');
+    state.additionalPayments.forEach((payment) => {
+      if (!hasPaymentContent(payment.amount, payment.date)) hide(`[data-payment-id="${payment.id}"]`);
+    });
+    if (!hasPaymentContent(state.toBePaidToday)) hide('[data-export="toBePaidToday"]');
+    hide('[data-export="addPayment"]');
     if (!String(state.taxRate).trim()) hide('[data-export="tax"]');
     if (!String(state.discount).trim()) hide('[data-export="discount"]');
     if (!String(state.shipping).trim()) hide('[data-export="shipping"]');
@@ -551,7 +571,7 @@ export default function InvoiceGenerator() {
           : s.items;
         const pick = (k: keyof typeof r, cur: string) =>
           str(r[k]) ? str(r[k]) : cur;
-        return {
+        const next: InvoiceState = {
           ...s,
           billTo: pick("billTo", s.billTo),
           from: MANDATORY_FROM,
@@ -576,6 +596,9 @@ export default function InvoiceGenerator() {
           totalInPkr: s.totalInPkr,
           scheduledPayment: pick("scheduledPayment", s.scheduledPayment),
         };
+        return mentionsAgenticmyze(`${aiText} ${next.poNumber}`)
+          ? { ...activateAgenticmyze(next), brand: "agenticmyze" }
+          : { ...next, brand: "appointfunnels" };
       });
       toast.success("Invoice filled from your text", { id: "ai" });
     } catch (e) {
@@ -1118,6 +1141,12 @@ export default function InvoiceGenerator() {
                 <span className="text-lg font-bold tabular-nums">{fmt(balanceDue)}</span>
               </div>
 
+              <TotalRow
+                label={state.labels.toBePaidToday}
+                onLabelChange={(v) => updateLabel("toBePaidToday", v)}
+                dataExport="toBePaidToday"
+                value={<Input aria-label="To Be Paid Today" value={state.toBePaidToday} onChange={(e) => update("toBePaidToday", e.target.value)} placeholder="—" className="h-8 min-w-0 w-full rounded-md text-right" />}
+              />
               {/* Scheduled Payment */}
               <div className="mt-4 rounded-lg border bg-background p-4" data-export="scheduled">
                 <EditableText
@@ -1128,17 +1157,34 @@ export default function InvoiceGenerator() {
                 <div className="mt-2 grid grid-cols-2 gap-2">
                   <Input
                     value={state.scheduledPayment}
+                    aria-label="Scheduled payment 1 amount"
                     onChange={(e) => update("scheduledPayment", e.target.value)}
                     placeholder="Amount"
                     className="rounded-lg text-right"
                   />
                   <Input
-                    type="date"
+                    aria-label="Scheduled payment 1 date"
+                    placeholder="Date or payment terms"
                     value={state.scheduledDate}
                     onChange={(e) => update("scheduledDate", e.target.value)}
                     className="rounded-lg"
                   />
                 </div>
+              </div>
+              {state.additionalPayments.map((payment, index) => (
+                <div key={payment.id} className="mt-4 border-t pt-3" data-payment-id={payment.id}>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-semibold uppercase text-muted-foreground">{state.labels.scheduledPayment} {index + 2}</span>
+                    <Button variant="ghost" size="icon" aria-label={`Remove scheduled payment ${index + 2}`} title="Remove payment" className="print:hidden" onClick={() => update("additionalPayments", state.additionalPayments.filter((row) => row.id !== payment.id))}><Trash2 className="h-4 w-4" /></Button>
+                  </div>
+                  <div className="mt-2 grid grid-cols-2 gap-2">
+                    <Input aria-label={`Scheduled payment ${index + 2} amount`} value={payment.amount} placeholder="Amount" onChange={(e) => update("additionalPayments", state.additionalPayments.map((row) => row.id === payment.id ? { ...row, amount: e.target.value } : row))} className="min-w-0 rounded-lg text-right" />
+                    <Input aria-label={`Scheduled payment ${index + 2} date`} value={payment.date} placeholder="Date or payment terms" onChange={(e) => update("additionalPayments", state.additionalPayments.map((row) => row.id === payment.id ? { ...row, date: e.target.value } : row))} className="min-w-0 rounded-lg" />
+                  </div>
+                </div>
+              ))}
+              <div data-export="addPayment" className="print:hidden">
+                <Button variant="ghost" size="sm" onClick={() => update("additionalPayments", [...state.additionalPayments, { id: crypto.randomUUID(), amount: "", date: "" }])}><Plus className="mr-1 h-4 w-4" />Add Scheduled Payment</Button>
               </div>
             </div>
           </div>

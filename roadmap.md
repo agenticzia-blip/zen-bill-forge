@@ -1,0 +1,3 @@
+- [ ] Add repeatable scheduled payments with free-form dates and an optional To Be Paid Today line.
+- [ ] Switch invoice branding and Description when Agenticmyze is mentioned, preserving editable text.
+- [ ] Verify saving and PDF export, and apply required package security update.
